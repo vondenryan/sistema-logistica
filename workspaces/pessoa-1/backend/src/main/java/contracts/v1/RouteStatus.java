@@ -1,0 +1,9 @@
+package contracts.v1;
+
+public enum RouteStatus {
+  PLANNED,
+  ASSIGNED,
+  IN_PROGRESS,
+  COMPLETED,
+  CANCELLED
+}

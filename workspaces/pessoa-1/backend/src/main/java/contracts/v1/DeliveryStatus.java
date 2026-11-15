@@ -1,0 +1,10 @@
+package contracts.v1;
+
+public enum DeliveryStatus {
+  PENDING,
+  ASSIGNED,
+  IN_TRANSIT,
+  FAILED_ATTEMPT,
+  DELIVERED,
+  CANCELLED
+}

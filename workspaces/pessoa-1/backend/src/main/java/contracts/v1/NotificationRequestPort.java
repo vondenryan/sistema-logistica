@@ -1,0 +1,7 @@
+package contracts.v1;
+
+import java.util.*;
+
+public interface NotificationRequestPort {
+  NotificationReceipt enqueue(NotificationRequest request);
+}
