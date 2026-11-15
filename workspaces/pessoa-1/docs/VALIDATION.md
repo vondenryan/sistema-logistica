@@ -27,3 +27,7 @@ Não houve integração com implementações das Pessoas 2/3 ou E2E da Sprint 4.
 O DAT não foi fornecido; tarifa, geocodificação e cancelamento tardio continuam pendentes. PATCH de rascunho é extensão local para o CRUD, aguardando formalização antes da integração. Não houve configuração de CI global ou publicação do ambiente. Contratos e migrações requerem revisão antes do merge.
 
 A API GitHub encontrou bloqueio do proxy CONNECT HTTP 403 para api.github.com; isso não comprova ausência de credenciais Git. O resultado de push/PR é informado separadamente no relatório final.
+
+## Entrega Git
+
+O push de `feat/p1-sprint-1` foi concluído via autenticação Git fornecida pela plataforma. A execução de `scripts/create-pr.sh` tentou abrir PR para `develop`, mas recebeu `Post https://api.github.com/graphql: Forbidden`. O PR não foi criado. Abrir manualmente a comparação `https://github.com/vondenryan/sistema-logistica/compare/develop...feat/p1-sprint-1?expand=1`, usando `docs/PR.md` como descrição. Não houve merge nem publicação do ambiente.
