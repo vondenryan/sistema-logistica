@@ -1,0 +1,14 @@
+{
+  "type": "https://example.invalid/problems/validation-error",
+  "title": "Validation error",
+  "status": 400,
+  "detail": "requiredCapacityKg must be greater than zero",
+  "code": "VALIDATION_ERROR",
+  "details": [
+    {
+      "field": "requiredCapacityKg",
+      "reason": "MUST_BE_POSITIVE"
+    }
+  ],
+  "traceId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+}
