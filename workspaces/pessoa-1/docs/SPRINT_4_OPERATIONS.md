@@ -37,3 +37,12 @@ python3 scripts/verify-sprint4-components.py
 ```
 
 O teste exige Docker e as imagens já em cache: Java/Nginx usadas pelos Dockerfiles, `postgres:16`, `axllent/mailpit:v1.27.8` e `python:3.12-slim` (somente cliente de teste, não serviço da aplicação). Não faz downloads. Cria sua própria rede interna sem egress, containers e PostgreSQL descartável; gera credenciais temporárias em memória, usa **dev/fakes e tarifa 2.50 apenas de teste**, verifica gateway/SPA/autenticação/fluxo P1 e captura uma mensagem SMTP sintética. O cliente usa NO_PROXY apenas para os nomes internos do teste, sem mudar o proxy do ambiente. Remove seus próprios containers, volumes anônimos e rede ao terminar. Não toca no Compose de desenvolvimento nem no banco Supabase. O resultado não prova notificações da aplicação nem entrega de módulos P2/P3.
+
+
+## IP de cliente e limite de login
+
+O backend mantém `server.forward-headers-strategy=none`: o endereço remoto deve continuar sendo o peer da conexão. `LOGIN_TRUSTED_PROXY_IPS` aceita uma lista separada por vírgulas de IPs literais exatos; o padrão vazio não confia em proxies. Somente uma conexão originada de um desses endereços pode fornecer um único `X-Real-IP` válido. Cabeçalhos duplicados, listas, nomes DNS, portas e identificadores de zona são recusados; IPv6 é normalizado, incluindo IPv4 mapeado. `X-Forwarded-For` e `Forwarded` não determinam o limite.
+
+O Nginx sobrescreve `X-Real-IP` e `X-Forwarded-For` com seu `$remote_addr` e remove `Forwarded`. O Compose usa o mesmo `GATEWAY_IPV4_ADDRESS` para o frontend e para a lista de confiança do backend. Esse endereço é reservado fora de `INTEGRATION_DYNAMIC_RANGE`, dentro de `INTEGRATION_SUBNET`. Se houver conflito com uma rede local, ajuste as três variáveis em conjunto no arquivo privado. Não confie na sub-rede inteira nem ative processamento genérico de forwarded headers no servidor.
+
+O teste de componentes esgota a janela do cliente A, confirma login do cliente B e bloqueia A diretamente no backend, sempre com cabeçalhos forjados. Inspeciona os endereços atribuídos e logs temporários de IP/status para comprovar os peers efetivos; não registra credenciais ou tokens. Esses logs são habilitados somente no teste. Publicação de portas, NAT ou outro proxy podem fazer clientes externos compartilharem um endereço antes do Nginx. O teste com dois clientes na rede Docker não comprova distinção de clientes externos nessas topologias; valide o endereço observado no ponto de entrada antes de uma implantação com outra cadeia de proxies.

@@ -19,6 +19,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: integration
       ROUTING_PROVIDER: osrm
+      LOGIN_TRUSTED_PROXY_IPS: ${GATEWAY_IPV4_ADDRESS:-172.30.64.10}
+      SERVER_FORWARD_HEADERS_STRATEGY: none
       OSRM_BASE_URL: ${OSRM_BASE_URL:?Set OSRM_BASE_URL to a reachable OSRM service}
       FREIGHT_TARIFF_PER_KM: ${FREIGHT_TARIFF_PER_KM:-}
       DB_URL: jdbc:postgresql://postgres:5432/logistics
@@ -39,6 +41,9 @@ services:
       context: ./frontend
     ports:
       - "127.0.0.1:18000:80"
+    networks:
+      default:
+        ipv4_address: ${GATEWAY_IPV4_ADDRESS:-172.30.64.10}
     depends_on:
       backend:
         condition: service_started
@@ -53,3 +58,10 @@ services:
       - "127.0.0.1:18025:8025"
 volumes:
   integration_postgres_data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${INTEGRATION_SUBNET:-172.30.64.0/24}
+          ip_range: ${INTEGRATION_DYNAMIC_RANGE:-172.30.64.128/25}

@@ -8,7 +8,7 @@ A branch `feat/p1-sprint-4` foi criada de `origin/develop` em `16dd845`, após m
 
 | Verificação | Resultado e limite |
 | --- | --- |
-| `cd backend && ./mvnw -o -B package` | 25 testes, sem falhas/erros/skips; JAR executável gerado |
+| `cd backend && ./mvnw -o -B package` | 28 testes, sem falhas/erros/skips; JAR executável gerado (inclui correção da revisão #6) |
 | Frontend: testes e build npm em modo offline | 33 testes e build TypeScript/Vite aprovados |
 | `python3 -m unittest discover -s contract-tests -v` | 16 testes aprovados, incluindo o inventário |
 | `docker compose -f compose.integration.yml config -q` | Configuração válida com valores temporários sem imprimir credenciais; não inicia nem valida integração |
@@ -42,3 +42,13 @@ Não houve composição com P2/P3, validação de migrações globais, envio rea
 ## Entrega Git
 
 O commit `fa99099` foi enviado a `origin/feat/p1-sprint-4`. A tentativa de abrir **rascunho** com `gh pr create --draft --base develop --head feat/p1-sprint-4 --body-file workspaces/pessoa-1/docs/SPRINT_4_PR.md` recebeu `Post https://api.github.com/graphql: Forbidden`; nenhum PR foi criado automaticamente. Abertura manual, como rascunho de preparação parcial: https://github.com/vondenryan/sistema-logistica/compare/develop...feat/p1-sprint-4?expand=1 . A Sprint 4 não deve ser marcada como concluída com esta preparação. Não houve merge nem publicação.
+
+
+## Correções da revisão do PR #6
+
+A revisão apontou dois itens: base `main` incorreta e limite de login compartilhado por todos os clientes atrás do Nginx. A base esperada continua sendo `develop`, com rascunho de preparação parcial. A tentativa de alterar a base via `gh pr edit 6 --base develop` recebeu Forbidden da API GitHub; é necessário corrigir no painel antes de nova análise. O código da Sprint 4 continua na mesma branch.
+
+O limite compartilhado foi reproduzido com as imagens anteriores: o cliente A atingiu 429, e um cliente B com outro IP também recebeu 429. A correção usa o IP de cliente somente quando enviado por um peer explicitamente autorizado; o Nginx sobrescreve os cabeçalhos recebidos. O Compose reserva um endereço exclusivo do gateway e desativa interpretação genérica de forwarded headers. Há testes de IPv4/IPv6, representação mapeada, proxies não autorizados, cabeçalhos inválidos/duplicados e janelas separadas.
+
+
+Após reconstruir as duas imagens com rede de build desabilitada, o mesmo teste Docker passou: A recebeu 429 mesmo variando cabeçalhos, B autenticou com 200 e A continuou em 429 no acesso direto ao backend. Os logs temporários comprovaram o peer gateway e os dois IPs distintos, além do peer direto A. SPA, assets, autenticação, fluxo P1 e captura SMTP sintética continuaram aprovados. O inventário final de containers, volumes e redes foi idêntico ao inicial. As suítes somaram 77 testes aprovados (28 backend, 33 frontend, 16 contratos); build frontend e configuração do Compose também aprovados. Esses resultados continuam limitados aos componentes P1 com fixtures dev; integração P2/P3 permanece bloqueada.

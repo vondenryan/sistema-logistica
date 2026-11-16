@@ -8,6 +8,7 @@ Três subagentes Terra 6.1 no médio trabalharam em áreas separadas: backend, f
 
 - Imagem Java 21 do JAR pré-compilado, usuário não root e exclusão de arquivos locais do contexto de build.
 - Imagem Nginx do frontend pré-compilado, SPA, proxy `/api/v1` e políticas de cache.
+- Limite de login por cliente atrás do gateway, com confiança restrita ao IP exato do Nginx e rejeição de cabeçalhos forjados de peers não autorizados.
 - Compose de integração separado do banco local, com PostgreSQL, backend, frontend e Mailpit.
 - Guardas de perfil que recusam fakes em integration/prod e indicam portas reais ausentes.
 - Inventário com saída não zero para P2/P3 ausentes; documentação de operação e pendências.
@@ -15,6 +16,10 @@ Três subagentes Terra 6.1 no médio trabalharam em áreas separadas: backend, f
 ## Validação
 
 Ver `docs/SPRINT_4_VALIDATION.md` para comandos, contagens e limites. Os testes de container do P1 usam dev/fakes explicitamente apenas para verificar empacotamento/gateway; não são integração real P2/P3. A mensagem sintética capturada no Mailpit verifica o transporte local, sem representar notificação gerada pela aplicação.
+
+## Base do PR
+
+Destino obrigatório: `develop`, mantendo rascunho de preparação parcial. O PR #6 foi aberto para `main`; alterar a base antes de nova revisão. A tentativa via API recebeu Forbidden e a alteração precisa ser feita no painel.
 
 ## Bloqueios para conclusão
 
