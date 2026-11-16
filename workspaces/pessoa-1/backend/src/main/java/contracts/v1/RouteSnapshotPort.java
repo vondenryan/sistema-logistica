@@ -1,7 +1,0 @@
-package contracts.v1;
-
-import java.util.*;
-
-public interface RouteSnapshotPort {
-  RouteSnapshot getById(UUID routeId);
-}

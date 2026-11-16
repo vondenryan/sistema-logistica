@@ -1,7 +1,0 @@
-package contracts.v1;
-
-public enum OrderStatus {
-  DRAFT,
-  CONFIRMED,
-  CANCELLED
-}

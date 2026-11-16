@@ -1,8 +1,0 @@
-package contracts.v1;
-
-public enum Role {
-  ADMIN,
-  OPERATOR,
-  STORE,
-  DRIVER
-}

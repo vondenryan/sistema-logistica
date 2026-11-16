@@ -1,4 +1,0 @@
-CREATE SCHEMA IF NOT EXISTS orders;
-CREATE TABLE orders.orders (id UUID PRIMARY KEY, store_id UUID NOT NULL, origin_id UUID NOT NULL, status VARCHAR(20) NOT NULL, origin_json TEXT, destination_json TEXT NOT NULL, recipient_name VARCHAR(150) NOT NULL, recipient_email VARCHAR(254), tracking_code VARCHAR(64) NOT NULL UNIQUE, created_at TIMESTAMP WITH TIME ZONE NOT NULL, confirmation_event UUID, confirmed_at TIMESTAMP WITH TIME ZONE, delivery_done BOOLEAN NOT NULL DEFAULT FALSE, notification_done BOOLEAN NOT NULL DEFAULT FALSE);
-CREATE INDEX orders_store_idx ON orders.orders(store_id, created_at, id);
-CREATE TABLE orders.order_items (order_id UUID NOT NULL REFERENCES orders.orders(id), position INTEGER NOT NULL, description VARCHAR(200) NOT NULL, quantity INTEGER NOT NULL, unit_weight_kg NUMERIC(12,3) NOT NULL, PRIMARY KEY(order_id,position));
