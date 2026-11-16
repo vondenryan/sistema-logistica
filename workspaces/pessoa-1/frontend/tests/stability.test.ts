@@ -71,3 +71,38 @@ describe('operações pendentes e troca de sessão', () => {
   const w=mount(RoutesView,{props:{api:new Api(()=>'x'),role:'DRIVER',onExpired:expired}}); await w.get('input').setValue('id'); await w.get('form').trigger('submit'); w.unmount(); pending.resolve(json({status:401,title:'Erro',detail:'Sessão expirada',details:[]},401)); await flushPromises(); expect(expired).not.toHaveBeenCalled()
  })
 })
+
+describe('retorno a pedidos depois de invalidar a lista inicial', () => {
+ it.each([
+  {role:'ADMIN', finishBeforeReturn:true},
+  {role:'OPERATOR', finishBeforeReturn:true},
+  {role:'ADMIN', finishBeforeReturn:false},
+  {role:'OPERATOR', finishBeforeReturn:false}
+ ])('recarrega para $role com resposta inicial concluída antes do retorno: $finishBeforeReturn', async ({role, finishBeforeReturn}) => {
+  const initial = deferred(); let lists = 0
+  const latest = {...order, recipientName:'Pedido atualizado'}
+  vi.stubGlobal('fetch',vi.fn((url:string) => {
+   const path=String(url)
+   if(path.endsWith('/auth/login')) return Promise.resolve(json({accessToken:'token',expiresAt:'2099-01-01T00:00:00Z',actor:{...actor,role}}))
+   if(path.includes('/orders?')) {
+    lists++
+    if(lists===1) return initial.promise
+    return Promise.resolve(json({items:lists===2?[]:[latest],page:0,size:20,totalItems:lists===2?0:1}))
+   }
+   throw Error(path)
+  }))
+  const w=mount(App)
+  try {
+   await flushPromises(); await w.get('input[type=email]').setValue('operator@example.invalid'); await w.get('input[type=password]').setValue('x'); await w.get('form').trigger('submit'); await flushPromises()
+   expect(lists).toBe(1)
+   await w.get('nav').findAll('button').find(b=>b.text()==='Rotas')!.trigger('click'); await flushPromises()
+   expect(lists).toBe(2)
+   if(finishBeforeReturn) { initial.resolve(json({items:[order],page:0,size:20,totalItems:1})); await flushPromises() }
+   await w.get('nav').findAll('button').find(b=>b.text()==='Pedidos')!.trigger('click'); await flushPromises()
+   if(!finishBeforeReturn) { initial.resolve(json({items:[order],page:0,size:20,totalItems:1})); await flushPromises() }
+   expect(w.findAll('tbody tr').map(row=>row.text()).join(' ')).toContain('Pedido atualizado')
+   expect(w.text()).toContain('1 resultado(s)'); expect(w.text()).not.toContain('Nenhum pedido por aqui'); expect(w.text()).not.toContain('Private A')
+   expect(lists).toBe(3)
+  } finally { initial.resolve(json({items:[],page:0,size:20,totalItems:0})); w.unmount() }
+ })
+})

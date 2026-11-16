@@ -43,3 +43,9 @@ A configuração Supabase pendente foi preservada fora desta entrega. Não houve
 ## Entrega Git
 
 O commit de implementação `adaab49` foi enviado para `origin/feat/p1-sprint-3`. A abertura de PR com `gh pr create --base develop --head feat/p1-sprint-3 --body-file workspaces/pessoa-1/docs/SPRINT_3_PR.md` foi impedida por `Post https://api.github.com/graphql: Forbidden`; nenhum PR foi criado automaticamente. Abrir manualmente: https://github.com/vondenryan/sistema-logistica/compare/develop...feat/p1-sprint-3?expand=1 . Base develop, comparação feat/p1-sprint-3. Sem merge ou publicação pelo agente.
+
+## Correção da revisão do PR #5 — 16/11/2026
+
+O comentário P2 identificou que a lista inicial era invalidada ao abrir Rotas, mas voltar a Pedidos não iniciava nova consulta. A correção observa o retorno de Rotas para Pedidos e recarrega a lista para os papéis com acesso a pedidos, preservando a invalidação de respostas de contexto anterior.
+
+Foram adicionados quatro cenários de regressão: ADMIN e OPERATOR, com a resposta inicial chegando antes ou depois do retorno a Pedidos. Eles reproduziram a lista vazia antes da correção e agora verificam a consulta nova, seus dados atualizados e o descarte da resposta anterior. A suíte completa do frontend passou com 33 testes, mantendo os casos de logout, troca de conta, respostas atrasadas e isolamento de cotações. O build TypeScript/Vite passou. Backend, contratos e migrações não foram alterados nesta correção.
