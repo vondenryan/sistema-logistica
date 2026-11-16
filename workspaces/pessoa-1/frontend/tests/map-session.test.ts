@@ -47,6 +47,57 @@ describe('mapa e cotação na interface', () => {
   expect(w.text()).toContain('Distância simulada para desenvolvimento'); expect(w.text()).not.toContain('FAKE'); expect(w.text()).toContain('30.00'); w.unmount()
  })
 })
+describe('isolamento da cotação por pedido', () => {
+ const secondOrderId = '44444444-4444-4444-8444-444444444445'
+ const secondQuote = { ...quote, quoteId: '88888888-8888-4888-8888-888888888889', orderId: secondOrderId, amount: '91.23', distanceKm: '36.492' }
+ function orderFlow(mismatchedQuote = false) {
+  let second = { ...order, orderId: secondOrderId, recipientName: 'Pedido B', status: 'DRAFT' }
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
+   const path = String(url), method = init.method || 'GET'
+   let result: unknown; let status = 200
+   if (path.endsWith('/auth/login')) result = { accessToken: 'fixture', tokenType: 'Bearer', expiresAt: '2099-01-01T00:00:00.000Z', actor }
+   else if (path.includes('/orders?')) result = { items: [order], page: 0, size: 20, totalItems: 1 }
+   else if (path.endsWith('/freight-quote')) result = path.includes(secondOrderId) && !mismatchedQuote ? secondQuote : quote
+   else if (path.endsWith('/orders') && method === 'POST') { result = second; status = 201 }
+   else if (path.endsWith('/confirm')) { second = { ...second, status: 'CONFIRMED' }; result = second }
+   else if (path.endsWith('/' + orderId)) result = order
+   else throw new Error('Unexpected request: ' + path)
+   return new Response(JSON.stringify(result), { status, headers: { 'Content-Type': 'application/json' } })
+  }))
+ }
+ async function createAndConfirmSecond(w: ReturnType<typeof mount>) {
+  await w.findAll('button').find(b => b.text().includes('Voltar aos pedidos'))!.trigger('click'); await flushPromises()
+  await w.findAll('button').find(b => b.text().includes('Novo pedido'))!.trigger('click')
+  const fill = async (label: string, value: string) => { await w.findAll('label').find(l => l.text() === label)!.get('input').setValue(value) }
+  await fill('ID da origem', originId); await fill('Nome', 'Pedido B'); await fill('Endereço', 'Rua B'); await fill('Cidade', 'Cidade'); await fill('UF', 'SC')
+  await fill('Descrição do item 1', 'Caixa B'); await fill('Quantidade', '1'); await fill('Peso unitário (kg)', '2.000')
+  await w.get('form').trigger('submit'); await flushPromises()
+  await w.findAll('button').find(b => b.text() === 'Confirmar pedido')!.trigger('click'); await flushPromises()
+ }
+ it('limpa a cotação de A ao criar e confirmar B e permite consultar a cotação própria de B', async () => {
+  orderFlow(); const w = mount(App)
+  try {
+   await flushPromises(); await login(w); await w.get('tbody button').trigger('click'); await flushPromises()
+   await w.findAll('button').find(b => b.text() === 'Consultar cotação de frete')!.trigger('click'); await flushPromises()
+   expect(w.text()).toContain(quote.quoteId); expect(w.text()).toContain('30.00')
+   await createAndConfirmSecond(w)
+   expect(w.text()).toContain('Pedido B'); expect(w.text()).toContain('Não cotado')
+   expect(w.text()).not.toContain(quote.quoteId); expect(w.text()).not.toContain('Snapshot da cotação'); expect(w.text()).not.toContain('30.00')
+   await w.findAll('button').find(b => b.text() === 'Consultar cotação de frete')!.trigger('click'); await flushPromises()
+   expect(w.text()).toContain(secondQuote.quoteId); expect(w.text()).toContain('91.23'); expect(w.text()).not.toContain(quote.quoteId)
+  } finally { w.unmount() }
+ })
+ it('não exibe nem aplica uma resposta de cotação pertencente a outro pedido', async () => {
+  orderFlow(true); const w = mount(App)
+  try {
+   await flushPromises(); await login(w); await w.get('tbody button').trigger('click'); await flushPromises()
+   await createAndConfirmSecond(w)
+   await w.findAll('button').find(b => b.text() === 'Consultar cotação de frete')!.trigger('click'); await flushPromises()
+   expect(w.text()).toContain('Não cotado'); expect(w.text()).not.toContain(quote.quoteId); expect(w.text()).not.toContain('Snapshot da cotação')
+   expect(w.get('[role=alert]').text()).toContain('não corresponde ao pedido selecionado')
+  } finally { w.unmount() }
+ })
+})
 describe('expiração da sessão', () => {
  it('encerra sessão e remove armazenamento no instante da expiração', async () => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-11-16T12:00:00.000Z')); fake('2026-11-16T12:00:10.000Z')

@@ -43,3 +43,9 @@ Screenshots do navegador: [cotação](SPRINT_2_FREIGHT.png) e [rota](SPRINT_2_RO
 ## Entrega Git
 
 O commit de implementação `295b6f8` foi enviado a `origin/feat/p1-sprint-2`. A tentativa de criar o PR via `gh pr create --base develop --head feat/p1-sprint-2 --body-file workspaces/pessoa-1/docs/SPRINT_2_PR.md` recebeu `Post https://api.github.com/graphql: Forbidden`. Nenhum PR foi criado automaticamente. Abertura manual: https://github.com/vondenryan/sistema-logistica/compare/develop...feat/p1-sprint-2?expand=1 . Manter base develop e compare feat/p1-sprint-2. Não houve merge nem publicação do ambiente.
+
+## Correção da revisão do PR #4 — 16/11/2026
+
+O comentário P2 reportou o snapshot de frete de A ainda visível ao criar e confirmar B. O teste de regressão reproduziu a falha no commit c15ef64 antes da correção. A interface agora limpa a cotação ao criar outro pedido e só renderiza o snapshot cujo orderId corresponde ao pedido selecionado. A resposta da API também é verificada antes de alterar o frete, e respostas tardias de outro pedido são descartadas.
+
+Foram adicionados dois testes: o fluxo completo A→cotação→novo B→confirmação→cotação própria de B, e a rejeição de uma resposta de cotação vinculada a outro pedido. Ambos falharam antes da correção e passaram depois. `npm test`: 16 testes aprovados; `npm run build`: TypeScript e Vite aprovados. Backend, migrações e contratos não foram alterados nesta correção.
