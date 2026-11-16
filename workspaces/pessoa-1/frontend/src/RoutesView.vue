@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { ApiError, type Api, type Order, type RouteSnapshot } from './api'
 const props = defineProps<{ api: Api; role: string }>()
 const emit = defineEmits<{ expired: [] }>()
@@ -7,17 +7,19 @@ const canEdit = computed(() => ['ADMIN', 'OPERATOR'].includes(props.role))
 const orders = ref<Order[]>([]); const page = ref(0); const total = ref(0); const chosen = ref<Order[]>([])
 const routeId = ref(''); const route = ref<RouteSnapshot | null>(null); const sequence = ref<string[]>([])
 const distance = ref(''); const busy = ref(false); const error = ref(''); const notice = ref('')
-async function run(fn: () => Promise<void>) { busy.value = true; error.value = ''; notice.value = ''; try { await fn() } catch (e) { if (e instanceof ApiError && e.problem.status === 401) emit('expired'); error.value = e instanceof Error ? e.message : 'Não foi possível concluir a operação.' } finally { busy.value = false } }
+let operationVersion = 0; let disposed = false
+onBeforeUnmount(() => { disposed = true; operationVersion++ })
+async function run(fn: () => Promise<void>) { const operation = ++operationVersion; busy.value = true; error.value = ''; notice.value = ''; try { await fn() } catch (e) { if (!disposed && operation === operationVersion) { if (e instanceof ApiError && e.problem.status === 401) emit('expired'); error.value = e instanceof Error ? e.message : 'Não foi possível concluir a operação.' } } finally { if (!disposed && operation === operationVersion) busy.value = false } }
 async function load(n = page.value) { await run(async () => { const p = await props.api.list(n); page.value = n; orders.value = p.items; total.value = p.totalItems }) }
 if (canEdit.value) void load()
-function toggle(o: Order, checked: boolean) { if (!checked) { chosen.value = chosen.value.filter(x => x.orderId !== o.orderId); return } if (chosen.value.length >= 10) { error.value = 'Selecione no máximo 10 pedidos.'; return } if (chosen.value.length && (chosen.value[0].originId !== o.originId || chosen.value[0].storeId !== o.storeId)) { error.value = 'Os pedidos devem ter a mesma origem e loja.'; return } error.value = ''; chosen.value.push(o) }
+function toggle(o: Order, checked: boolean) { distance.value = ''; notice.value = '';  if (!checked) { chosen.value = chosen.value.filter(x => x.orderId !== o.orderId); return } if (chosen.value.length >= 10) { error.value = 'Selecione no máximo 10 pedidos.'; return } if (chosen.value.length && (chosen.value[0].originId !== o.originId || chosen.value[0].storeId !== o.storeId)) { error.value = 'Os pedidos devem ter a mesma origem e loja.'; return } error.value = ''; chosen.value.push(o) }
 function move(list: string[], index: number, delta: number) { const target = index + delta; if (target < 0 || target >= list.length) return; [list[index], list[target]] = [list[target], list[index]] }
 const chosenIds = computed(() => chosen.value.map(o => o.orderId))
-function moveChosen(index: number, delta: number) { const target = index + delta; if (target >= 0 && target < chosen.value.length) [chosen.value[index], chosen.value[target]] = [chosen.value[target], chosen.value[index]] }
+function moveChosen(index: number, delta: number) { distance.value = ''; notice.value = '';  const target = index + delta; if (target >= 0 && target < chosen.value.length) [chosen.value[index], chosen.value[target]] = [chosen.value[target], chosen.value[index]] }
 async function suggest() { await run(async () => { const s = await props.api.suggest(chosen.value[0].originId, chosenIds.value); if (s.orderedOrderIds.length !== chosen.value.length || new Set(s.orderedOrderIds).size !== chosen.value.length || s.orderedOrderIds.some(id => !chosenIds.value.includes(id))) throw new Error('Sugestão inválida recebida do servidor.'); chosen.value = s.orderedOrderIds.map(id => chosen.value.find(o => o.orderId === id)!); distance.value = s.estimatedDistanceKm; notice.value = 'Sugestão aplicada; você ainda pode alterar a ordem.' }) }
 function setRoute(r: RouteSnapshot) { route.value = r; routeId.value = r.routeId; sequence.value = [...r.orderIds] }
 async function create() { await run(async () => { setRoute(await props.api.createRoute(chosen.value[0].originId, chosenIds.value)); notice.value = 'Rota criada.' }) }
-async function lookup() { await run(async () => { setRoute(await props.api.getRoute(routeId.value.trim())) }) }
+async function lookup() { const id = routeId.value.trim(); route.value = null; sequence.value = []; await run(async () => { setRoute(await props.api.getRoute(id)) }) }
 async function assign() { if (route.value) await run(async () => { setRoute(await props.api.assignRoute(route.value!.routeId)); notice.value = 'Rota atribuída.' }) }
 async function start() { if (route.value) await run(async () => { setRoute(await props.api.startRoute(route.value!.routeId)); notice.value = 'Rota iniciada.' }) }
 async function saveOrder() { if (route.value) await run(async () => { setRoute(await props.api.reorderRoute(route.value!.routeId, sequence.value)); notice.value = 'Ordem atualizada.' }) }

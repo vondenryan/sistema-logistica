@@ -74,6 +74,7 @@ public class Fixtures
 
   public OriginSnapshot getOrigin(UUID id) {
     available();
+    if (id == null) throw new ContractException("VALIDATION_ERROR");
     if (id.equals(UUID.fromString("11111111-1111-4111-8111-111111111113")))
       return new OriginSnapshot(id, OriginType.STORE, STORE, ADDRESS, false);
     if (id.equals(ORIGIN)) return new OriginSnapshot(id, OriginType.STORE, STORE, ADDRESS, true);
@@ -83,16 +84,22 @@ public class Fixtures
   }
 
   public StoreSnapshot getStore(UUID id) {
+    available();
+    if (id == null) throw new ContractException("VALIDATION_ERROR");
     if (id.equals(STORE) || id.equals(OTHER_STORE))
       return new StoreSnapshot(id, true, "Loja fictícia");
     throw new ContractException("NOT_FOUND");
   }
 
-  public synchronized AssignmentSnapshot assign(AssignmentRequest r) {
+  public AssignmentSnapshot assign(AssignmentRequest r) {
+    available();
+    if (r == null || r.routeId() == null || r.originId() == null)
+      throw new ContractException("VALIDATION_ERROR");
     if (r.requiredCapacityKg() == null || r.requiredCapacityKg().signum() <= 0)
       throw new ContractException("VALIDATION_ERROR");
     getOrigin(r.originId());
-    if (requests.containsKey(r.routeId()) && !requests.get(r.routeId()).equals(r))
+    AssignmentRequest previous = requests.get(r.routeId());
+    if (previous != null && !previous.equals(r))
       throw new ContractException("IDEMPOTENCY_CONFLICT");
     RouteSnapshot route = routes.getObject().getById(r.routeId());
     if (!route.originId().equals(r.originId())
@@ -111,20 +118,34 @@ public class Fixtures
     }
     if (total.compareTo(r.requiredCapacityKg()) != 0)
       throw new ContractException("PRECONDITION_FAILED");
-    if (assignments.values().stream()
-        .anyMatch(a -> !a.routeId().equals(r.routeId()) && !released.contains(a.routeId())))
-      throw new ContractException("NO_ELIGIBLE_RESOURCE");
-    requests.put(r.routeId(), r);
-    return assignments.computeIfAbsent(
-        r.routeId(),
-        x -> new AssignmentSnapshot(id("assignment" + x), x, DRIVER, VEHICLE, null, FleetType.OWN));
+    synchronized (this) {
+      if (requests.containsKey(r.routeId()) && !requests.get(r.routeId()).equals(r))
+        throw new ContractException("IDEMPOTENCY_CONFLICT");
+      if (assignments.values().stream()
+          .anyMatch(a -> !a.routeId().equals(r.routeId()) && !released.contains(a.routeId())))
+        throw new ContractException("NO_ELIGIBLE_RESOURCE");
+      requests.put(r.routeId(), r);
+      return assignments.computeIfAbsent(
+          r.routeId(),
+          x ->
+              new AssignmentSnapshot(
+                  id("assignment" + x), x, DRIVER, VEHICLE, null, FleetType.OWN));
+    }
   }
 
-  public synchronized ReleaseReceipt release(ReleaseRequest r) {
+  public ReleaseReceipt release(ReleaseRequest r) {
+    available();
+    if (r == null || r.routeId() == null || r.eventId() == null || r.reason() == null)
+      throw new ContractException("VALIDATION_ERROR");
     if (!assignments.containsKey(r.routeId())) throw new ContractException("NOT_FOUND");
     if (r.reason() != ReleaseReason.ROUTE_COMPLETED)
       throw new ContractException("PRECONDITION_FAILED");
-    return new ReleaseReceipt(r.routeId(), released.add(r.routeId()));
+    RouteSnapshot route = routes.getObject().getById(r.routeId());
+    if (route.status() != RouteStatus.COMPLETED) throw new ContractException("PRECONDITION_FAILED");
+    synchronized (this) {
+      if (!assignments.containsKey(r.routeId())) throw new ContractException("NOT_FOUND");
+      return new ReleaseReceipt(r.routeId(), released.add(r.routeId()));
+    }
   }
 
   public DeliverySnapshot ensureCreated(UUID orderId, UUID eventId) {
@@ -161,6 +182,9 @@ public class Fixtures
   }
 
   public DeliverySnapshot getByOrderId(UUID id) {
+    available();
+    if (deliveryUnavailable) throw new ContractException("DEPENDENCY_UNAVAILABLE");
+    if (id == null) throw new ContractException("VALIDATION_ERROR");
     var d = deliveries.get(id);
     if (d == null) throw new ContractException("NOT_FOUND");
     return d;
@@ -168,7 +192,12 @@ public class Fixtures
 
   public synchronized NotificationReceipt enqueue(NotificationRequest r) {
     available();
-    if (r.to() == null
+    if (r == null
+        || r.eventId() == null
+        || r.eventType() == null
+        || r.orderId() == null
+        || r.occurredAt() == null
+        || r.to() == null
         || !r.to().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
         || r.to().length() > 254) throw new ContractException("VALIDATION_ERROR");
     String key = r.eventId() + ":" + r.eventType();
@@ -179,6 +208,8 @@ public class Fixtures
 
   public DocumentReceipt ensureGenerated(DocumentRequest r) {
     available();
+    if (r == null || r.orderId() == null || r.documentType() == null)
+      throw new ContractException("VALIDATION_ERROR");
     if (orders.getObject().getById(r.orderId()).freightAmount() == null)
       throw new ContractException("PRECONDITION_FAILED");
     return new DocumentReceipt(

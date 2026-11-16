@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.support.TransactionTemplate;
 
 public class RouteService implements RouteSnapshotPort {
+  private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(RouteService.class);
   private final RouteStore store;
   private final OrderSnapshotPort orders;
   private final CurrentActorPort actors;
@@ -179,7 +180,11 @@ public class RouteService implements RouteSnapshotPort {
     for (var id : store.pendingRoutes())
       try {
         reconcile(id);
-      } catch (RuntimeException ignored) {
+      } catch (RuntimeException ex) {
+        LOG.warn(
+            "Reconciliation failed for {}: {}",
+            id,
+            ex instanceof ContractException c ? c.code() : "INTERNAL_ERROR");
       }
   }
 

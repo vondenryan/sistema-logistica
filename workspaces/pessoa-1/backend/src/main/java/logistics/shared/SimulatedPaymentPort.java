@@ -1,4 +1,4 @@
-package logistics.orders.application;
+package logistics.shared;
 
 import java.util.UUID;
 

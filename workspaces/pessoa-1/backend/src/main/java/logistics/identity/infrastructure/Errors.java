@@ -52,12 +52,23 @@ class Errors {
   @ExceptionHandler({
     HttpMessageNotReadableException.class,
     MethodArgumentTypeMismatchException.class,
-    MethodArgumentNotValidException.class
+    MethodArgumentNotValidException.class,
+    org.springframework.web.bind.MissingServletRequestParameterException.class
   })
   ResponseEntity<ProblemDetail> invalid(Exception e) {
     return ResponseEntity.badRequest()
         .contentType(MediaType.APPLICATION_PROBLEM_JSON)
         .body(body("VALIDATION_ERROR"));
+  }
+
+  @ExceptionHandler({
+    org.springframework.web.servlet.resource.NoResourceFoundException.class,
+    org.springframework.web.servlet.NoHandlerFoundException.class
+  })
+  ResponseEntity<ProblemDetail> missing(Exception e) {
+    return ResponseEntity.status(404)
+        .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+        .body(body("NOT_FOUND"));
   }
 
   @ExceptionHandler(Exception.class)
