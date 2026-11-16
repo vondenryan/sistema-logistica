@@ -38,3 +38,7 @@ Receber partners/fleet (P2) e deliveries/notifications/documents (P3), suas tela
 Continuam pendentes o valor operacional da tarifa e geocodificação; não foi presumido valor de implantação. O ciclo terminal e o comando de transição da entrega no início da rota seguem as limitações do v1. A conexão Supabase não foi testada ou modificada; os arquivos locais pendentes desse trabalho ficam fora desta entrega.
 
 Não houve composição com P2/P3, validação de migrações globais, envio real de e-mail, PDF da aplicação, publicação do ambiente ou merge pelo agente. A criação do PR será tentada como rascunho de preparação parcial; integração não será marcada como concluída.
+
+## Entrega Git
+
+O commit `fa99099` foi enviado a `origin/feat/p1-sprint-4`. A tentativa de abrir **rascunho** com `gh pr create --draft --base develop --head feat/p1-sprint-4 --body-file workspaces/pessoa-1/docs/SPRINT_4_PR.md` recebeu `Post https://api.github.com/graphql: Forbidden`; nenhum PR foi criado automaticamente. Abertura manual, como rascunho de preparação parcial: https://github.com/vondenryan/sistema-logistica/compare/develop...feat/p1-sprint-4?expand=1 . A Sprint 4 não deve ser marcada como concluída com esta preparação. Não houve merge nem publicação.
