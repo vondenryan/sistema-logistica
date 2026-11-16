@@ -16,24 +16,32 @@ import org.springframework.mock.web.*;
 class FakesTest {
   @SuppressWarnings("unchecked")
   Fixtures fixture() {
+    return fixture(new java.util.concurrent.atomic.AtomicReference<>(RouteStatus.PLANNED));
+  }
+
+  @SuppressWarnings("unchecked")
+  Fixtures fixture(java.util.concurrent.atomic.AtomicReference<RouteStatus> routeStatus) {
     ObjectProvider<OrderSnapshotPort> orderProvider = mock(ObjectProvider.class);
     ObjectProvider<RouteSnapshotPort> routeProvider = mock(ObjectProvider.class);
     OrderSnapshotPort orders = mock(OrderSnapshotPort.class);
     RouteSnapshotPort routes = mock(RouteSnapshotPort.class);
     when(orderProvider.getObject()).thenReturn(orders);
     when(routeProvider.getObject()).thenReturn(routes);
+    Fixtures[] holder = new Fixtures[1];
     when(routes.getById(any()))
         .thenAnswer(
-            call ->
-                new RouteSnapshot(
-                    call.getArgument(0),
-                    Fixtures.STORE,
-                    Fixtures.ORIGIN,
-                    RouteStatus.PLANNED,
-                    List.of(UUID.fromString("44444444-4444-4444-8444-444444444444")),
-                    null,
-                    null,
-                    null));
+            call -> {
+              assertThat(Thread.holdsLock(holder[0])).isFalse();
+              return new RouteSnapshot(
+                  call.getArgument(0),
+                  Fixtures.STORE,
+                  Fixtures.ORIGIN,
+                  routeStatus.get(),
+                  List.of(UUID.fromString("44444444-4444-4444-8444-444444444444")),
+                  null,
+                  null,
+                  null);
+            });
     when(orders.getById(any()))
         .thenAnswer(
             call ->
@@ -50,7 +58,8 @@ class FakesTest {
                     new BigDecimal("1.000"),
                     null,
                     "BRL"));
-    return new Fixtures(orderProvider, routeProvider);
+    holder[0] = new Fixtures(orderProvider, routeProvider);
+    return holder[0];
   }
 
   @Test
@@ -102,6 +111,97 @@ class FakesTest {
             () -> f.assign(new AssignmentRequest(route, Fixtures.ORIGIN, BigDecimal.TEN)))
         .isInstanceOf(ContractException.class)
         .hasMessage("IDEMPOTENCY_CONFLICT");
+  }
+
+  @Test
+  void fleetReleaseRequiresCompletedRouteAndKeepsVehicleReservedUntilThen() {
+    var status = new java.util.concurrent.atomic.AtomicReference<>(RouteStatus.PLANNED);
+    Fixtures f = fixture(status);
+    UUID route = UUID.randomUUID();
+    UUID next = UUID.randomUUID();
+    f.assign(new AssignmentRequest(route, Fixtures.ORIGIN, new BigDecimal("1.000")));
+    var release = new ReleaseRequest(route, UUID.randomUUID(), ReleaseReason.ROUTE_COMPLETED);
+    status.set(RouteStatus.IN_PROGRESS);
+    assertThatThrownBy(() -> f.release(release))
+        .isInstanceOf(ContractException.class)
+        .hasMessage("PRECONDITION_FAILED");
+    status.set(RouteStatus.PLANNED);
+    assertThatThrownBy(
+            () -> f.assign(new AssignmentRequest(next, Fixtures.ORIGIN, new BigDecimal("1.000"))))
+        .isInstanceOf(ContractException.class)
+        .hasMessage("NO_ELIGIBLE_RESOURCE");
+    status.set(RouteStatus.COMPLETED);
+    assertThat(f.release(release).released()).isTrue();
+    assertThat(f.release(release).released()).isFalse();
+    status.set(RouteStatus.PLANNED);
+    assertThat(f.assign(new AssignmentRequest(next, Fixtures.ORIGIN, new BigDecimal("1.000"))))
+        .isNotNull();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void assignmentDoesNotHoldReservationMonitorDuringSnapshotReads() {
+    ObjectProvider<OrderSnapshotPort> orderProvider = mock(ObjectProvider.class);
+    ObjectProvider<RouteSnapshotPort> routeProvider = mock(ObjectProvider.class);
+    OrderSnapshotPort orders = mock(OrderSnapshotPort.class);
+    RouteSnapshotPort routes = mock(RouteSnapshotPort.class);
+    when(orderProvider.getObject()).thenReturn(orders);
+    when(routeProvider.getObject()).thenReturn(routes);
+    Fixtures f = new Fixtures(orderProvider, routeProvider);
+    UUID orderId = UUID.randomUUID();
+    when(routes.getById(any()))
+        .thenAnswer(
+            call -> {
+              assertThat(Thread.holdsLock(f)).isFalse();
+              return new RouteSnapshot(
+                  call.getArgument(0),
+                  Fixtures.STORE,
+                  Fixtures.ORIGIN,
+                  RouteStatus.PLANNED,
+                  List.of(orderId),
+                  null,
+                  null,
+                  null);
+            });
+    when(orders.getById(orderId))
+        .thenAnswer(
+            call -> {
+              assertThat(Thread.holdsLock(f)).isFalse();
+              return new OrderSnapshot(
+                  orderId,
+                  Fixtures.STORE,
+                  Fixtures.ORIGIN,
+                  OrderStatus.CONFIRMED,
+                  Fixtures.ADDRESS,
+                  Fixtures.ADDRESS,
+                  "name",
+                  null,
+                  "tracking",
+                  BigDecimal.ONE,
+                  null,
+                  "BRL");
+            });
+    assertThat(f.assign(new AssignmentRequest(UUID.randomUUID(), Fixtures.ORIGIN, BigDecimal.ONE)))
+        .isNotNull();
+  }
+
+  @Test
+  void unavailableAndMalformedRequestsAreContractErrors() {
+    Fixtures f = fixture();
+    f.setUnavailable(true);
+    assertThatThrownBy(() -> f.getStore(Fixtures.STORE))
+        .isInstanceOf(ContractException.class)
+        .hasMessage("DEPENDENCY_UNAVAILABLE");
+    assertThatThrownBy(() -> f.getByOrderId(UUID.randomUUID()))
+        .isInstanceOf(ContractException.class)
+        .hasMessage("DEPENDENCY_UNAVAILABLE");
+    f.setUnavailable(false);
+    assertThatThrownBy(() -> f.ensureGenerated(new DocumentRequest(UUID.randomUUID(), null)))
+        .isInstanceOf(ContractException.class)
+        .hasMessage("VALIDATION_ERROR");
+    assertThatThrownBy(() -> f.assign(null))
+        .isInstanceOf(ContractException.class)
+        .hasMessage("VALIDATION_ERROR");
   }
 
   @Test

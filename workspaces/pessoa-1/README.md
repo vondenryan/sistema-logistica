@@ -59,3 +59,7 @@ Veja [docs/VALIDATION.md](docs/VALIDATION.md) para testes e limites; [docs/PR.md
 ## Sprint 2
 
 Frete e rotas estão descritos em [docs/SPRINT_2_OPERATIONS.md](docs/SPRINT_2_OPERATIONS.md), com [evidências de validação](docs/SPRINT_2_VALIDATION.md). A tarifa exige configuração explícita. O modo offline usa provider fake apenas em desenvolvimento e informa a origem simulada.
+
+## Sprint 3 — estabilização isolada
+
+Execute `./scripts/verify-sprint3.sh` para o smoke automatizado com PostgreSQL descartável e fakes, após instalar os pré-requisitos/cache descritos em [operações](docs/SPRINT_3_OPERATIONS.md). O teste não usa o banco Docker normal nem Supabase e limpa seus próprios recursos. Consulte [evidências e limites](docs/SPRINT_3_VALIDATION.md) e o [inventário de integração](INTEGRATION.md) antes de compor os módulos na Sprint 4.

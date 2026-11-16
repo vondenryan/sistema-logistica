@@ -20,7 +20,8 @@ import org.springframework.test.web.servlet.MockMvc;
       "spring.datasource.password=",
       "app.jwt-secret=test-only-secret-at-least-32-bytes",
       "app.demo-password=test-only-password",
-      "app.reconcile-delay-ms=3600000"
+      "app.reconcile-delay-ms=3600000",
+      "ROUTING_PROVIDER=fake"
     })
 @ActiveProfiles("dev")
 @AutoConfigureMockMvc
@@ -176,6 +177,89 @@ class BackendIntegrationTest {
                 Integer.class,
                 java.util.UUID.fromString(id)))
         .isEqualTo(1);
+  }
+
+  @Test
+  void routeWorkflowAndInvalidRequests() throws Exception {
+    String admin = login("admin@example.invalid");
+    String store = login("store@example.invalid");
+    String driver = login("driver@example.invalid");
+    String order =
+        json.readTree(
+                mvc.perform(
+                        post("/api/v1/orders")
+                            .header("Authorization", "Bearer " + store)
+                            .contentType("application/json")
+                            .content(payload()))
+                    .andExpect(status().isCreated())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString())
+            .get("orderId")
+            .asText();
+    mvc.perform(
+            post("/api/v1/orders/" + order + "/confirm")
+                .header("Authorization", "Bearer " + store)
+                .contentType("application/json")
+                .content("{}"))
+        .andExpect(status().isOk());
+    String request =
+        "{\"originId\":\"11111111-1111-4111-8111-111111111111\",\"orderIds\":[\"" + order + "\"]}";
+    mvc.perform(
+            post("/api/v1/routes/suggest")
+                .header("Authorization", "Bearer " + admin)
+                .contentType("application/json")
+                .content(request))
+        .andExpect(status().isOk());
+    mvc.perform(
+            post("/api/v1/routes")
+                .header("Authorization", "Bearer " + store)
+                .contentType("application/json")
+                .content(request))
+        .andExpect(status().isForbidden());
+    String route =
+        json.readTree(
+                mvc.perform(
+                        post("/api/v1/routes")
+                            .header("Authorization", "Bearer " + admin)
+                            .contentType("application/json")
+                            .content(request))
+                    .andExpect(status().isCreated())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString())
+            .get("routeId")
+            .asText();
+    mvc.perform(get("/api/v1/routes/" + route).header("Authorization", "Bearer " + driver))
+        .andExpect(status().isNotFound());
+    mvc.perform(
+            put("/api/v1/routes/" + route + "/stops")
+                .header("Authorization", "Bearer " + admin)
+                .contentType("application/json")
+                .content("{\"orderedOrderIds\":[\"" + order + "\"]}"))
+        .andExpect(status().isOk());
+    mvc.perform(
+            post("/api/v1/routes/" + route + "/assign")
+                .header("Authorization", "Bearer " + admin)
+                .contentType("application/json")
+                .content("null"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    mvc.perform(get("/api/v1/does-not-exist").header("Authorization", "Bearer " + admin))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    mvc.perform(
+            post("/api/v1/routes/" + route + "/assign")
+                .header("Authorization", "Bearer " + admin)
+                .contentType("application/json")
+                .content("{}"))
+        .andExpect(status().isOk());
+    mvc.perform(
+            post("/api/v1/routes/" + route + "/start")
+                .header("Authorization", "Bearer " + admin)
+                .contentType("application/json")
+                .content("{}"))
+        .andExpect(status().isOk());
   }
 
   @Test

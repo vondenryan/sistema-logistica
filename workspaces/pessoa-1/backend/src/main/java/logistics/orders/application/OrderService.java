@@ -6,12 +6,14 @@ import java.security.SecureRandom;
 import java.time.*;
 import java.util.*;
 import logistics.orders.domain.OrderData.*;
+import logistics.shared.SimulatedPaymentPort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class OrderService implements OrderSnapshotPort {
+  private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(OrderService.class);
   private final OrderStore repo;
   private final logistics.shared.FreightLookupPort freight;
   private final CurrentActorPort actor;
@@ -247,7 +249,11 @@ public class OrderService implements OrderSnapshotPort {
     for (UUID id : repo.pending())
       try {
         reconcile(id);
-      } catch (RuntimeException ignored) {
+      } catch (RuntimeException ex) {
+        LOG.warn(
+            "Reconciliation failed for {}: {}",
+            id,
+            ex instanceof ContractException c ? c.code() : "INTERNAL_ERROR");
       }
   }
 

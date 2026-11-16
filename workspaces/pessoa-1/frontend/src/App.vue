@@ -6,26 +6,31 @@ import MapPicker from './MapPicker.vue'
 import { createSession } from './session'
 const session = createSession(); const { state, api } = session
 const email = ref(''); const password = ref(''); const busy = ref(false); const error = ref(''); const notice = ref(''); const view = ref<'list'|'form'|'detail'>('list'); const orders = ref<Order[]>([]); const selected = ref<Order | null>(null); const page = ref(0); const total = ref(0); const reason = ref(''); const editing = ref(false)
+let contextVersion = 0; let operationVersion = 0
 const area = ref<'orders'|'routes'>('orders'); const quote = ref<FreightQuote | null>(null); const latitude = ref(''); const longitude = ref('')
-watch(() => state.actor, actor => { if (!actor) { orders.value = []; selected.value = null; quote.value = null; view.value = 'list'; area.value = 'orders'; page.value = 0; total.value = 0 } })
+watch([() => state.actor, area], () => { contextVersion++; operationVersion++; busy.value = false }, { flush: 'sync' })
+watch(() => state.actor, () => { orders.value = []; selected.value = null; quote.value = null; view.value = 'list'; area.value = 'orders'; page.value = 0; total.value = 0; reason.value = ''; latitude.value = ''; longitude.value = ''; editing.value = false; delete form.recipientEmail; Object.assign(form, blank()) }, { flush: 'sync' })
 const allowed = computed(() => state.actor && ['ADMIN','OPERATOR','STORE'].includes(state.actor.role))
 const blank = (): OrderInput => ({ storeId: state.actor?.role === 'STORE' ? state.actor.storeId || '' : '', originId: '', destination: { line1:'', line2:null, city:'', state:'', country:'BR' }, recipientName:'', items:[{description:'', quantity:1, unitWeightKg:''}] })
 const form = reactive<OrderInput>(blank())
 function message(e: unknown) { if (e instanceof ApiError) { if (e.problem.status === 401 && state.token) session.logout(); const fields = (e.problem.details || []).map(d => `${d.field}: ${d.reason}`).join('; '); return [e.problem.detail || e.problem.title, fields, e.problem.traceId ? `Referência: ${e.problem.traceId}` : ''].filter(Boolean).join(' · ') } return e instanceof Error ? e.message : 'Não foi possível concluir a operação.' }
-async function run(fn: () => Promise<void>) { busy.value = true; error.value = ''; notice.value = ''; try { await fn() } catch (e) { error.value = message(e) } finally { busy.value = false } }
-async function load() { await run(async () => { const result = await api.list(page.value); orders.value = result.items; total.value = result.totalItems; view.value = 'list' }) }
-async function login() { await run(async () => { await session.login(email.value, password.value); password.value = ''; if (allowed.value) { const result = await api.list(); orders.value = result.items; total.value = result.totalItems } }) }
+async function run(fn: () => Promise<void>) { const actor = state.actor, token = state.token, version = contextVersion, operation = ++operationVersion; busy.value = true; error.value = ''; notice.value = ''; try { await fn() } catch (e) { if (operation === operationVersion && version === contextVersion && (!actor || (state.actor === actor && state.token === token))) error.value = message(e) } finally { if (operation === operationVersion) busy.value = false } }
+function activeRequest() { const actor = state.actor, token = state.token, version = contextVersion; return () => !!actor && state.actor === actor && state.token === token && version === contextVersion }
+async function load() { await run(async () => { const active = activeRequest(); const result = await api.list(page.value); if (!active()) return; orders.value = result.items; total.value = result.totalItems; view.value = 'list' }) }
+async function login() { await run(async () => { if (!await session.login(email.value, password.value)) return; password.value = ''; if (allowed.value) await load() }) }
 function newOrder() { quote.value = null; latitude.value = ''; longitude.value = '';  delete form.recipientEmail; Object.assign(form, blank()); editing.value = false; error.value = ''; view.value = 'form' }
 function editOrder() { if (!selected.value || selected.value.status !== 'DRAFT') return; const o = selected.value; latitude.value = o.destination.latitude?.toString() ?? ''; longitude.value = o.destination.longitude?.toString() ?? ''; Object.assign(form, { storeId: o.storeId, originId: o.originId, destination: { ...o.destination }, recipientName: o.recipientName, recipientEmail: o.recipientEmail, items: o.items.map(i => ({ ...i })) }); editing.value = true; error.value = ''; view.value = 'form' }
 function payload(): OrderInput { const destination = { ...form.destination }; for (const [key, value, limit] of [['latitude', latitude.value, 90], ['longitude', longitude.value, 180]] as const) { if (value === '') { delete destination[key]; continue } if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value) || Math.abs(Number(value)) > limit) throw new Error(`${key === 'latitude' ? 'Latitude' : 'Longitude'} inválida.`); destination[key] = Number(value) };  if (!destination.postalCode) delete destination.postalCode; if (destination.latitude === undefined || destination.latitude === null) delete destination.latitude; if (destination.longitude === undefined || destination.longitude === null) delete destination.longitude; return { storeId: state.actor?.role === 'STORE' ? state.actor.storeId || '' : form.storeId, originId: form.originId, destination, recipientName: form.recipientName, ...(form.recipientEmail?.trim() ? { recipientEmail: form.recipientEmail.trim() } : {}), items: form.items.map(i => ({ description: i.description, quantity: Number(i.quantity), unitWeightKg: i.unitWeightKg })) } }
-async function save() { await run(async () => { selected.value = editing.value && selected.value ? await api.update(selected.value.orderId, payload()) : await api.create(payload()); view.value = 'detail'; notice.value = editing.value ? 'Rascunho atualizado.' : 'Pedido criado.' }) }
-async function open(id: string) { await run(async () => { selected.value = await api.get(id); quote.value = null; reason.value = ''; view.value = 'detail' }) }
-async function confirmOrder() { if (!selected.value) return; await run(async () => { selected.value = await api.confirm(selected.value!.orderId); notice.value = 'Pedido confirmado.' }) }
+async function save() { await run(async () => { const active = activeRequest(); const result = editing.value && selected.value ? await api.update(selected.value.orderId, payload()) : await api.create(payload()); if (!active()) return; selected.value = result; quote.value = null; view.value = 'detail'; notice.value = editing.value ? 'Rascunho atualizado.' : 'Pedido criado.' }) }
+async function open(id: string) { await run(async () => { const active = activeRequest(); const result = await api.get(id); if (!active()) return; selected.value = result; quote.value = null; reason.value = ''; view.value = 'detail' }) }
+async function confirmOrder() { if (!selected.value) return; await run(async () => { const active = activeRequest(); const result = await api.confirm(selected.value!.orderId); if (!active()) return; selected.value = result; notice.value = 'Pedido confirmado.' }) }
 async function quoteOrder() {
   if (!selected.value) return
   const orderId = selected.value.orderId
   await run(async () => {
+    const active = activeRequest()
     const received = await api.quote(orderId)
+    if (!active()) return
     if (!selected.value || selected.value.orderId !== orderId) return
     if (received.orderId !== orderId) throw new Error('A cotação recebida não corresponde ao pedido selecionado.')
     quote.value = received
@@ -33,9 +38,9 @@ async function quoteOrder() {
     notice.value = 'Cotação consultada.'
   })
 }
-async function cancelOrder() { if (!selected.value || !reason.value.trim()) return; await run(async () => { selected.value = await api.cancel(selected.value!.orderId, reason.value.trim()); reason.value = ''; notice.value = 'Pedido cancelado.' }) }
+async function cancelOrder() { if (!selected.value || !reason.value.trim()) return; await run(async () => { const active = activeRequest(); const result = await api.cancel(selected.value!.orderId, reason.value.trim()); if (!active()) return; selected.value = result; reason.value = ''; notice.value = 'Pedido cancelado.' }) }
 function changePage(n: number) { page.value = n; void load() }
-onMounted(async () => { await run(async () => { await session.restore(); if (allowed.value) { const result = await api.list(); orders.value = result.items; total.value = result.totalItems } }) })
+onMounted(async () => { await run(async () => { if (await session.restore() && allowed.value) await load() }) })
 </script>
 <template>
   <div class="shell"><header class="top"><div class="brand"><span class="mark">↗</span><div><strong>Fluxo</strong><small>GESTÃO LOGÍSTICA</small></div></div><div v-if="state.actor" class="identity"><span>{{ state.actor.role }}</span><button class="link" @click="session.logout(); view='list'">Sair</button></div></header>

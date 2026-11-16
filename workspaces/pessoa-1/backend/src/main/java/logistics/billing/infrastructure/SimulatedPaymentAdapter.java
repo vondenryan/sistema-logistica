@@ -3,7 +3,7 @@ package logistics.billing.infrastructure;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
-import logistics.orders.application.SimulatedPaymentPort;
+import logistics.shared.SimulatedPaymentPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
