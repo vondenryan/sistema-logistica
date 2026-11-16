@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class OrderService implements OrderSnapshotPort {
   private final OrderStore repo;
+  private final logistics.shared.FreightLookupPort freight;
   private final CurrentActorPort actor;
   private final PartnerLookupPort partner;
   private final DeliveryCommandPort deliveries;
@@ -28,8 +29,10 @@ public class OrderService implements OrderSnapshotPort {
       DeliveryCommandPort deliveries,
       NotificationRequestPort notifications,
       TransactionTemplate tx,
-      SimulatedPaymentPort payments) {
+      SimulatedPaymentPort payments,
+      logistics.shared.FreightLookupPort freight) {
     this.repo = repo;
+    this.freight = freight;
     this.actor = actor;
     this.partner = partner;
     this.deliveries = deliveries;
@@ -141,13 +144,36 @@ public class OrderService implements OrderSnapshotPort {
     ActorContext a = permitted();
     View v = repo.get(id, false);
     scope(a, v.storeId());
-    return v;
+    return withFreight(v);
+  }
+
+  private View withFreight(View v) {
+    return new View(
+        v.orderId(),
+        v.storeId(),
+        v.originId(),
+        v.status(),
+        v.origin(),
+        v.destination(),
+        v.recipientName(),
+        v.recipientEmail(),
+        v.trackingCode(),
+        v.totalWeightKg(),
+        freight.latestAmount(v.orderId()),
+        v.currency(),
+        v.items(),
+        v.createdAt());
   }
 
   public Page list(int page, int size) {
     ActorContext a = permitted();
     if (page < 0 || size < 1 || size > 100) throw new ContractException("VALIDATION_ERROR");
-    return repo.list(a.role() == Role.STORE ? a.storeId() : null, page, size);
+    Page result = repo.list(a.role() == Role.STORE ? a.storeId() : null, page, size);
+    return new Page(
+        result.items().stream().map(this::withFreight).toList(),
+        result.page(),
+        result.size(),
+        result.totalItems());
   }
 
   public View confirm(UUID id) {
@@ -226,11 +252,11 @@ public class OrderService implements OrderSnapshotPort {
   }
 
   public OrderSnapshot getById(UUID id) {
-    return snapshot(repo.get(id, false));
+    return snapshot(withFreight(repo.get(id, false)));
   }
 
   public OrderSnapshot findByTrackingCode(String code) {
-    return snapshot(repo.getByTracking(code));
+    return snapshot(withFreight(repo.getByTracking(code)));
   }
 
   private OrderSnapshot snapshot(View v) {

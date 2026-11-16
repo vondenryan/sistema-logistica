@@ -19,6 +19,7 @@ public class DevFakeReplay {
     this.orders = orders;
   }
 
+  @org.springframework.core.annotation.Order(0)
   @EventListener(ApplicationReadyEvent.class)
   public void replay() {
     database.update(
