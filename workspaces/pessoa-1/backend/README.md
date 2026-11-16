@@ -30,3 +30,17 @@ Routing defaults to OSRM at `http://localhost:5000`; set `OSRM_BASE_URL` to the 
 Routes accept confirmed orders with one origin and store, at most ten unique stops. Suggestions use nearest-neighbor road distances and do not persist. Creation stores the submitted order. The route stop uniqueness constraint prevents concurrent active reuse; because route completion/cancellation is not implemented, it currently also blocks reuse of historical stops. Implement release as part of a future approved terminal lifecycle. Assignment stores the fleet result and retries delivery assignments with stable event IDs. Starting a route requires assignment and completed reconciliation. The v1 delivery command port has no start/in-transit operation, so starting only changes the route; delivery transitions remain with Pessoa 3.
 
 Dev fixtures are process-local and not production implementations. On dev startup confirmed orders replay first, then assigned and in-progress routes restore fake fleet reservations and delivery assignments. Startup fails if restoration fails; the fake provides one driver and one vehicle, so incompatible persisted active routes cannot be silently restored. Production/integration requires the real external module adapters and must not enable dev/test fakes.
+
+## Container and integration boundary
+
+Build the executable JAR on the host with the Maven dependencies already cached, then build from this backend directory:
+
+```sh
+./mvnw -o test
+./mvnw -o package
+docker build -t pessoa1-backend:local .
+```
+
+The image copies only `target/backend-1.0.0.jar`, uses the Java 21 JRE, runs as UID/GID 10001 and listens on container port 8080. Docker may need to pull the base image; the Docker build itself does not run Maven or fetch Java dependencies. Bind the container port as appropriate (for example `-p 8080:8080`) and provide database connectivity (`DB_URL`, `DB_USER`, `DB_PASSWORD`) and `JWT_SECRET` at runtime through the deployment's secret mechanism. Container `localhost` refers to the container itself; use reachable database and OSRM addresses. Configure `OSRM_BASE_URL` and the operational `FREIGHT_TARIFF_PER_KM` as needed. Never bake credentials into the image. The `dev` profile additionally requires `DEMO_PASSWORD` for the seed.
+
+`integration` and `prod` cannot be combined with `dev`/`test`, and reject `ROUTING_PROVIDER=fake`. They currently fail at startup with a missing real port provider diagnostic: P2/P3 have not delivered their modules. This image is a P1 deployment prerequisite, not a working integrated or production system. The guard inventories all seven external ports, but bean presence does not prove a real or compatible implementation. Integration also requires real identity provisioning, coordinated Flyway histories and real-provider contract, security and end-to-end testing; see INTEGRATION.md.

@@ -31,17 +31,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Configuration
 class SecurityConfig {
   @Bean
-  org.springframework.beans.factory.InitializingBean profileGuard(
-      org.springframework.core.env.Environment env) {
-    return () -> {
-      var active = java.util.Set.of(env.getActiveProfiles());
-      if ((active.contains("dev") || active.contains("test"))
-          && (active.contains("prod") || active.contains("integration")))
-        throw new IllegalStateException("dev/test fake adapters cannot run with prod/integration");
-    };
-  }
-
-  @Bean
   BCryptPasswordEncoder passwords() {
     return new BCryptPasswordEncoder();
   }

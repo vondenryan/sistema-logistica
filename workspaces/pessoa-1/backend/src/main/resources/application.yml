@@ -12,4 +12,3 @@ server:
   port: 8080
 app:
   jwt-secret: ${JWT_SECRET}
-  demo-password: ${DEMO_PASSWORD}

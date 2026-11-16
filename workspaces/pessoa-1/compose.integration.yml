@@ -1,0 +1,55 @@
+name: p1-integration
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: logistics
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+    volumes:
+      - integration_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logistics -d logistics"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: integration
+      ROUTING_PROVIDER: osrm
+      OSRM_BASE_URL: ${OSRM_BASE_URL:?Set OSRM_BASE_URL to a reachable OSRM service}
+      FREIGHT_TARIFF_PER_KM: ${FREIGHT_TARIFF_PER_KM:-}
+      DB_URL: jdbc:postgresql://postgres:5432/logistics
+      DB_USER: logistics
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "127.0.0.1:18000:80"
+    depends_on:
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --server-response --spider http://127.0.0.1/healthz 2>&1 | grep -q '^  HTTP/.* 200 '"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - "127.0.0.1:18025:8025"
+volumes:
+  integration_postgres_data:
