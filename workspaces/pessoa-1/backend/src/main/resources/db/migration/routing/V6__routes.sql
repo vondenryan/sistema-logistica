@@ -1,0 +1,2 @@
+CREATE TABLE routing.routes (id UUID PRIMARY KEY, store_id UUID NOT NULL, origin_id UUID NOT NULL, status VARCHAR(20) NOT NULL, driver_id UUID, vehicle_id UUID, started_at TIMESTAMP WITH TIME ZONE);
+CREATE TABLE routing.route_stops (route_id UUID NOT NULL REFERENCES routing.routes(id), order_id UUID NOT NULL, position INTEGER NOT NULL, delivery_done BOOLEAN NOT NULL DEFAULT FALSE, PRIMARY KEY(route_id,order_id), UNIQUE(order_id), UNIQUE(route_id,position));

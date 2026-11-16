@@ -30,5 +30,17 @@ export class Api {
   create(input: OrderInput) { return this.request<Order>('/orders', 'POST', input) }
   update(id: string, input: OrderInput) { return this.request<Order>(`/orders/${encodeURIComponent(id)}`, 'PATCH', input) }
   confirm(id: string) { return this.request<Order>(`/orders/${encodeURIComponent(id)}/confirm`, 'POST', {}) }
+  quote(id: string) { return this.request<FreightQuote>(`/orders/${encodeURIComponent(id)}/freight-quote`, 'POST', {}) }
+  suggest(originId: string, orderIds: string[]) { return this.request<Suggestion>('/routes/suggest', 'POST', { originId, orderIds }) }
+  createRoute(originId: string, orderIds: string[]) { return this.request<RouteSnapshot>('/routes', 'POST', { originId, orderIds }) }
+  getRoute(id: string) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}`) }
+  assignRoute(id: string) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}/assign`, 'POST', {}) }
+  startRoute(id: string) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}/start`, 'POST', {}) }
+  reorderRoute(id: string, orderedOrderIds: string[]) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}/stops`, 'PUT', { orderedOrderIds }) }
   cancel(id: string, reason: string) { return this.request<Order>(`/orders/${encodeURIComponent(id)}/cancel`, 'POST', { reason }) }
 }
+
+export interface FreightQuote { quoteId: string; orderId: string; distanceKm: string; tariffPerKm: string; amount: string; currency: 'BRL'; calculatedAt: string; source: string }
+export type RouteStatus = 'PLANNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export interface RouteSnapshot { routeId: string; storeId: string; originId: string; status: RouteStatus; orderIds: string[]; driverId: string | null; vehicleId: string | null; startedAt: string | null }
+export interface Suggestion { originId: string; orderedOrderIds: string[]; estimatedDistanceKm: string }

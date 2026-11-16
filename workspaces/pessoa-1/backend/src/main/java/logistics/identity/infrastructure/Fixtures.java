@@ -36,6 +36,7 @@ public class Fixtures
           new BigDecimal("-26.480000"),
           new BigDecimal("-49.070000"));
   private final ObjectProvider<OrderSnapshotPort> orders;
+  private final ObjectProvider<RouteSnapshotPort> routes;
   private volatile boolean unavailable;
   private volatile boolean deliveryUnavailable;
 
@@ -43,8 +44,9 @@ public class Fixtures
     deliveryUnavailable = value;
   }
 
-  Fixtures(ObjectProvider<OrderSnapshotPort> orders) {
+  Fixtures(ObjectProvider<OrderSnapshotPort> orders, ObjectProvider<RouteSnapshotPort> routes) {
     this.orders = orders;
+    this.routes = routes;
   }
 
   public int deliveryCount() {
@@ -92,6 +94,23 @@ public class Fixtures
     getOrigin(r.originId());
     if (requests.containsKey(r.routeId()) && !requests.get(r.routeId()).equals(r))
       throw new ContractException("IDEMPOTENCY_CONFLICT");
+    RouteSnapshot route = routes.getObject().getById(r.routeId());
+    if (!route.originId().equals(r.originId())
+        || (route.status() != RouteStatus.PLANNED
+            && route.status() != RouteStatus.ASSIGNED
+            && route.status() != RouteStatus.IN_PROGRESS))
+      throw new ContractException("PRECONDITION_FAILED");
+    BigDecimal total = BigDecimal.ZERO;
+    for (UUID orderId : route.orderIds()) {
+      OrderSnapshot order = orders.getObject().getById(orderId);
+      if (order.status() != OrderStatus.CONFIRMED
+          || !order.originId().equals(route.originId())
+          || !order.storeId().equals(route.storeId()))
+        throw new ContractException("PRECONDITION_FAILED");
+      total = total.add(order.totalWeightKg());
+    }
+    if (total.compareTo(r.requiredCapacityKg()) != 0)
+      throw new ContractException("PRECONDITION_FAILED");
     if (assignments.values().stream()
         .anyMatch(a -> !a.routeId().equals(r.routeId()) && !released.contains(a.routeId())))
       throw new ContractException("NO_ELIGIBLE_RESOURCE");
@@ -120,6 +139,16 @@ public class Fixtures
   }
 
   public synchronized DeliverySnapshot assignRoute(UUID orderId, UUID routeId, UUID eventId) {
+    available();
+    if (deliveryUnavailable) throw new ContractException("DEPENDENCY_UNAVAILABLE");
+    RouteSnapshot route = routes.getObject().getById(routeId);
+    OrderSnapshot order = orders.getObject().getById(orderId);
+    if ((route.status() != RouteStatus.ASSIGNED && route.status() != RouteStatus.IN_PROGRESS)
+        || !route.orderIds().contains(orderId)
+        || order.status() != OrderStatus.CONFIRMED
+        || !route.originId().equals(order.originId())
+        || !route.storeId().equals(order.storeId()))
+      throw new ContractException("PRECONDITION_FAILED");
     DeliverySnapshot d = getByOrderId(orderId);
     if (d.routeId() != null && !d.routeId().equals(routeId))
       throw new ContractException("CONFLICT");

@@ -16,7 +16,41 @@ import org.springframework.mock.web.*;
 class FakesTest {
   @SuppressWarnings("unchecked")
   Fixtures fixture() {
-    return new Fixtures(mock(ObjectProvider.class));
+    ObjectProvider<OrderSnapshotPort> orderProvider = mock(ObjectProvider.class);
+    ObjectProvider<RouteSnapshotPort> routeProvider = mock(ObjectProvider.class);
+    OrderSnapshotPort orders = mock(OrderSnapshotPort.class);
+    RouteSnapshotPort routes = mock(RouteSnapshotPort.class);
+    when(orderProvider.getObject()).thenReturn(orders);
+    when(routeProvider.getObject()).thenReturn(routes);
+    when(routes.getById(any()))
+        .thenAnswer(
+            call ->
+                new RouteSnapshot(
+                    call.getArgument(0),
+                    Fixtures.STORE,
+                    Fixtures.ORIGIN,
+                    RouteStatus.PLANNED,
+                    List.of(UUID.fromString("44444444-4444-4444-8444-444444444444")),
+                    null,
+                    null,
+                    null));
+    when(orders.getById(any()))
+        .thenAnswer(
+            call ->
+                new OrderSnapshot(
+                    call.getArgument(0),
+                    Fixtures.STORE,
+                    Fixtures.ORIGIN,
+                    OrderStatus.CONFIRMED,
+                    Fixtures.ADDRESS,
+                    Fixtures.ADDRESS,
+                    "name",
+                    null,
+                    "tracking",
+                    new BigDecimal("1.000"),
+                    null,
+                    "BRL"));
+    return new Fixtures(orderProvider, routeProvider);
   }
 
   @Test
@@ -57,6 +91,13 @@ class FakesTest {
       UUID first = all.get(0).get().assignmentId();
       for (var future : all) assertThat(future.get().assignmentId()).isEqualTo(first);
     }
+    assertThatThrownBy(
+            () ->
+                f.assign(
+                    new AssignmentRequest(
+                        UUID.randomUUID(), Fixtures.ORIGIN, new BigDecimal("1.000"))))
+        .isInstanceOf(ContractException.class)
+        .hasMessage("NO_ELIGIBLE_RESOURCE");
     assertThatThrownBy(
             () -> f.assign(new AssignmentRequest(route, Fixtures.ORIGIN, BigDecimal.TEN)))
         .isInstanceOf(ContractException.class)

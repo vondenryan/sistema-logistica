@@ -55,3 +55,7 @@ Com as dependências já instaladas no ambiente ativo, use `python3 -m unittest 
 ## Evidências da implementação
 
 Veja [docs/VALIDATION.md](docs/VALIDATION.md) para testes e limites; [docs/PR.md](docs/PR.md) contém a proposta de PR.
+
+## Sprint 2
+
+Frete e rotas estão descritos em [docs/SPRINT_2_OPERATIONS.md](docs/SPRINT_2_OPERATIONS.md), com [evidências de validação](docs/SPRINT_2_VALIDATION.md). A tarifa exige configuração explícita. O modo offline usa provider fake apenas em desenvolvimento e informa a origem simulada.

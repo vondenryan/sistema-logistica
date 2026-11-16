@@ -20,6 +20,7 @@ class Errors {
       case "CONFLICT", "IDEMPOTENCY_CONFLICT", "NO_ELIGIBLE_RESOURCE", "ALREADY_ASSIGNED" -> 409;
       case "PRECONDITION_FAILED" -> 422;
       case "RATE_LIMITED" -> 429;
+      case "UPSTREAM_ERROR" -> 502;
       case "DEPENDENCY_UNAVAILABLE" -> 503;
       default -> 500;
     };
