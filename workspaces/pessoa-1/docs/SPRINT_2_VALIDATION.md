@@ -39,3 +39,7 @@ Screenshots do navegador: [cotação](SPRINT_2_FREIGHT.png) e [rota](SPRINT_2_RO
 - O contrato v1 de entregas não tem comando de início da rota/IN_TRANSIT: iniciar altera a rota; a transição da entrega continua com Pessoa 3, sem alteração silenciosa da porta.
 - A unicidade de route_stops impede dupla reserva de pedido; também impede reutilização histórica enquanto o ciclo terminal e a liberação ainda não estão implementados. Esse ciclo não tem endpoint aprovado nesta Sprint e exige revisão futura.
 - Não houve alteração dos contratos compartilhados, migrações V1–V4, CI global, merge ou publicação do ambiente.
+
+## Entrega Git
+
+O commit de implementação `295b6f8` foi enviado a `origin/feat/p1-sprint-2`. A tentativa de criar o PR via `gh pr create --base develop --head feat/p1-sprint-2 --body-file workspaces/pessoa-1/docs/SPRINT_2_PR.md` recebeu `Post https://api.github.com/graphql: Forbidden`. Nenhum PR foi criado automaticamente. Abertura manual: https://github.com/vondenryan/sistema-logistica/compare/develop...feat/p1-sprint-2?expand=1 . Manter base develop e compare feat/p1-sprint-2. Não houve merge nem publicação do ambiente.
