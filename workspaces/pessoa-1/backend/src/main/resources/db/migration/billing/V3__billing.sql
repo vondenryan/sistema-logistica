@@ -1,0 +1,2 @@
+CREATE SCHEMA IF NOT EXISTS billing;
+CREATE TABLE billing.simulated_payments (order_id UUID PRIMARY KEY, status VARCHAR(20) NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL);

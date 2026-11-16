@@ -1,0 +1,8 @@
+package contracts.v1;
+
+public enum NotificationEventType {
+  ORDER_CONFIRMED,
+  DELIVERY_IN_TRANSIT,
+  DELIVERY_DELIVERED,
+  DELIVERY_FAILED_ATTEMPT
+}

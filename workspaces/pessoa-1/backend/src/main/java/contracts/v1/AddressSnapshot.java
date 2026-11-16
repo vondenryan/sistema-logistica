@@ -1,0 +1,15 @@
+package contracts.v1;
+
+import java.math.*;
+import java.time.*;
+import java.util.*;
+
+public record AddressSnapshot(
+    String line1,
+    String line2,
+    String city,
+    String state,
+    String postalCode,
+    String country,
+    BigDecimal latitude,
+    BigDecimal longitude) {}
