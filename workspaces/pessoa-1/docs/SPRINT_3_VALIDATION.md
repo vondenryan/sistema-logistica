@@ -39,3 +39,7 @@ Integração com os provedores reais P2/P3 continua na Sprint 4. O inventário e
 A unicidade histórica das paradas e a ausência de comando v1 para levar entregas a IN_TRANSIT no início da rota permanecem limitações do ciclo terminal/integrado. Não foram inventadas regras de cancelamento ou funcionalidades dos outros integrantes. Tarifa de implantação, geocodificação e DAT pendentes continuam explícitos. Não houve migração nova nem alteração de V1–V6.
 
 A configuração Supabase pendente foi preservada fora desta entrega. Não houve publicação do ambiente, merge pelo agente, alteração de CI global ou dos contratos compartilhados. O resultado do envio Git/abertura de PR será registrado separadamente.
+
+## Entrega Git
+
+O commit de implementação `adaab49` foi enviado para `origin/feat/p1-sprint-3`. A abertura de PR com `gh pr create --base develop --head feat/p1-sprint-3 --body-file workspaces/pessoa-1/docs/SPRINT_3_PR.md` foi impedida por `Post https://api.github.com/graphql: Forbidden`; nenhum PR foi criado automaticamente. Abrir manualmente: https://github.com/vondenryan/sistema-logistica/compare/develop...feat/p1-sprint-3?expand=1 . Base develop, comparação feat/p1-sprint-3. Sem merge ou publicação pelo agente.
