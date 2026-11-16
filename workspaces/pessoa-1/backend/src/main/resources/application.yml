@@ -9,7 +9,9 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
 server:
+  forward-headers-strategy: none
   port: 8080
 app:
+  security:
+    login-trusted-proxy-ips: ${LOGIN_TRUSTED_PROXY_IPS:}
   jwt-secret: ${JWT_SECRET}
-  demo-password: ${DEMO_PASSWORD}
