@@ -1,0 +1,27 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: Testes do backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Executar testes Maven
+        run: bash workspaces/pessoa-1/scripts/test-backend.sh
