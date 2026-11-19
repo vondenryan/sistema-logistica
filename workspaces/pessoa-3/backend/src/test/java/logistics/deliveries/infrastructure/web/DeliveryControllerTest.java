@@ -109,6 +109,19 @@ class DeliveryControllerTest {
         .andExpect(status().isBadRequest());
   }
 
+  @Test
+  void patchStatus_cancelled_returns400() throws Exception {
+    // [P2] Contract v1 forbids CANCELLED on this endpoint — cancellation rule is pending
+    fakeActor.asOperator();
+
+    mockMvc
+        .perform(
+            patch("/api/v1/deliveries/{id}/status", deliveryId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"CANCELLED\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
   // ------------------------------------------------------------------ //
   //  POST /api/v1/deliveries/{id}/complete                              //
   // ------------------------------------------------------------------ //

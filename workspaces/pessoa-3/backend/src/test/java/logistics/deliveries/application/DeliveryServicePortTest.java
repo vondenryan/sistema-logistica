@@ -152,7 +152,32 @@ class DeliveryServicePortTest {
   }
 
   @Test
-  @DisplayName("assignRoute throws CONFLICT if route does not contain the orderId")
+  @DisplayName("[P2] assignRoute throws CONFLICT if route is PLANNED (no driver/vehicle assigned yet)")
+  void testAssignRouteConflictIfRoutePlanned() {
+    deliveryService.ensureCreated(canonicalOrderId, UUID.randomUUID());
+
+    UUID plannedRouteId = UUID.randomUUID();
+    RouteSnapshot plannedRoute =
+        new RouteSnapshot(
+            plannedRouteId,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            RouteStatus.PLANNED,          // not yet assigned — must be rejected
+            List.of(canonicalOrderId),    // order IS in route, but route not assigned
+            null,                         // no driver
+            null,                         // no vehicle
+            null);
+    fakeRoutes.register(plannedRoute);
+
+    ContractException ex =
+        assertThrows(
+            ContractException.class,
+            () -> deliveryService.assignRoute(canonicalOrderId, plannedRouteId, UUID.randomUUID()));
+    assertEquals("CONFLICT", ex.code());
+  }
+
+  @Test
+  @DisplayName("[P2] assignRoute throws CONFLICT if route does not contain the orderId")
   void testAssignRouteConflictIfNotInRoute() {
     deliveryService.ensureCreated(canonicalOrderId, UUID.randomUUID());
 

@@ -105,11 +105,17 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       return delivery.toSnapshot();
     }
 
-    // Verify route exists and contains orderId
+    // Verify route exists, is assigned (has driver+vehicle), and contains orderId.
+    // Contract v1: assignRoute requires the route to already be ASSIGNED or IN_PROGRESS;
+    // a PLANNED route has no driver/vehicle yet and must be rejected.
     RouteSnapshot route = routeSnapshotPort.getById(routeId);
     if (route == null
         || route.orderIds() == null
         || !route.orderIds().contains(orderId)) {
+      throw new ContractException("CONFLICT");
+    }
+    if (route.status() != contracts.v1.RouteStatus.ASSIGNED
+        && route.status() != contracts.v1.RouteStatus.IN_PROGRESS) {
       throw new ContractException("CONFLICT");
     }
 
@@ -193,12 +199,13 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
 
     DeliveryStatus fromStatus = delivery.getStatus();
 
+    // Contract v1: PATCH /status only accepts IN_TRANSIT, FAILED_ATTEMPT and ASSIGNED.
+    // DELIVERED must use POST /complete; CANCELLED rule is pending — not allowed here.
     switch (targetStatus) {
       case IN_TRANSIT -> delivery.startTransit();
       case FAILED_ATTEMPT -> delivery.failAttempt(reason);
       case ASSIGNED -> delivery.assignRoute(delivery.getRouteId());
-      case CANCELLED -> delivery.cancel(reason);
-      default -> throw new ContractException("CONFLICT");
+      default -> throw new ContractException("VALIDATION_ERROR");
     }
 
     deliveryRepository.save(delivery);
