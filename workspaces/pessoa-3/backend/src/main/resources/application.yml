@@ -1,0 +1,22 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: deliveries-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/logistics_p3}
+    username: ${DB_USER:logistics}
+    password: ${DB_PASSWORD:logistics}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    schemas: deliveries
+    locations: classpath:db/migration/deliveries
+    default-schema: deliveries
+    create-schemas: true
+
+logging:
+  level:
+    root: INFO
+    logistics: DEBUG

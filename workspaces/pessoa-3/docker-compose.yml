@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-pessoa-3
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-logistics_p3}
+      POSTGRES_USER: ${POSTGRES_USER:-logistics}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - p3-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  p3-postgres-data:

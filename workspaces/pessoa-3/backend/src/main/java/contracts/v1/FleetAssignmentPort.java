@@ -1,0 +1,1 @@
+package contracts.v1;  import java.util.*;  public interface FleetAssignmentPort {   AssignmentSnapshot assign(AssignmentRequest request); }

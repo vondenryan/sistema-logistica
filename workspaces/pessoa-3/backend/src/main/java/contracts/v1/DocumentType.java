@@ -1,0 +1,1 @@
+package contracts.v1;  public enum DocumentType {   NFE_SIMULATED,   CTE_SIMULATED }
