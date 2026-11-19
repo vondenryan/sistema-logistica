@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+base=$(cd "$(dirname "$0")" && pwd)
+cache="${MAVEN_LAUNCHER_CACHE:-$base/.cache}"
+mkdir -p "$cache"
+archive="$cache/apache-maven-3.9.11-bin.tar.gz"
+maven="$cache/apache-maven-3.9.11/bin/mvn"
+if [[ ! -x "$maven" ]]; then
+  curl --fail --location --silent --show-error https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.11/apache-maven-3.9.11-bin.tar.gz -o "$archive"
+  echo "bcfe4fe305c962ace56ac7b5fc7a08b87d5abd8b7e89027ab251069faebee516b0ded8961445d6d91ec1985dfe30f8153268843c89aa392733d1a3ec956c9978  $archive" | sha512sum -c -
+  tar -xzf "$archive" -C "$cache"
+fi
+settings="$cache/settings.xml"
+python3 - "$settings" <<'PY'
+import os,sys,urllib.parse,xml.etree.ElementTree as E
+root=E.Element('settings',xmlns='http://maven.apache.org/SETTINGS/1.2.0')
+proxy=os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy') or os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
+if proxy:
+ u=urllib.parse.urlparse(proxy); proxies=E.SubElement(root,'proxies'); p=E.SubElement(proxies,'proxy')
+ for k,v in [('id','environment'),('active','true'),('protocol','http'),('host',u.hostname or ''),('port',str(u.port or 80)),('nonProxyHosts','|'.join(x.strip().lstrip('.') for x in (os.environ.get('NO_PROXY') or os.environ.get('no_proxy') or 'localhost,127.0.0.1').split(',') if x.strip()))]: E.SubElement(p,k).text=v
+ if u.username:E.SubElement(p,'username').text=urllib.parse.unquote(u.username)
+ if u.password:E.SubElement(p,'password').text=urllib.parse.unquote(u.password)
+E.ElementTree(root).write(sys.argv[1],encoding='unicode',xml_declaration=True)
+os.chmod(sys.argv[1],0o600)
+PY
+exec "$maven" -s "$settings" -Dmaven.repo.local="$cache/repository" "$@"

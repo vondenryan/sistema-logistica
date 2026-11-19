@@ -1,0 +1,2 @@
+CREATE SCHEMA IF NOT EXISTS identity;
+CREATE TABLE identity.users (id UUID PRIMARY KEY, email VARCHAR(254) NOT NULL UNIQUE, password_hash VARCHAR(100) NOT NULL, role VARCHAR(20) NOT NULL, store_id UUID, driver_id UUID);
