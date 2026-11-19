@@ -1,18 +1,17 @@
-name: Backend CI
+name: Testes do repositório
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, main]
 
 permissions:
   contents: read
 
 jobs:
-  backend-tests:
-    name: Testes do backend
+  ci-global:
+    name: CI Global
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
@@ -23,5 +22,59 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Executar testes Maven
-        run: bash workspaces/pessoa-1/scripts/test-backend.sh
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Rodar suítes dos workspaces
+        shell: bash
+        env:
+          MAVEN_OPTS: -DfailIfNoTests=true
+        run: |
+          shopt -s nullglob
+          backends=(workspaces/*/backend/pom.xml)
+          frontends=(workspaces/*/frontend/package.json)
+          contracts=(workspaces/*/contract-tests/requirements.txt)
+
+          if (( ${#backends[@]} + ${#frontends[@]} + ${#contracts[@]} == 0 )); then
+            echo "::error::Nenhuma suíte foi encontrada em workspaces/."
+            exit 1
+          fi
+
+          for pom in "${backends[@]}"; do
+            backend="${pom%/pom.xml}"
+            echo "Testes Maven: $backend"
+            if [[ -f "$backend/../scripts/test-backend.sh" ]]; then
+              bash "$backend/../scripts/test-backend.sh"
+            elif [[ -f "$backend/mvnw" ]]; then
+              (cd "$backend" && bash ./mvnw --batch-mode -DfailIfNoTests=true test)
+            else
+              mvn --batch-mode --file "$pom" -DfailIfNoTests=true test
+            fi
+          done
+
+          for manifest in "${frontends[@]}"; do
+            frontend="${manifest%/package.json}"
+            echo "Testes npm: $frontend"
+            (cd "$frontend" && npm ci && npm test)
+          done
+
+          for requirements in "${contracts[@]}"; do
+            suite="${requirements%/requirements.txt}"
+            echo "Testes de contrato: $suite"
+            tests=("$suite"/test*.py)
+            if (( ${#tests[@]} == 0 )); then
+              echo "::error::Nenhum arquivo test*.py em $suite."
+              exit 1
+            fi
+
+            venv=$(mktemp -d "$RUNNER_TEMP/contracts.XXXXXXXX")
+            python -m venv "$venv"
+            "$venv/bin/python" -m pip install -r "$requirements"
+            "$venv/bin/python" -m unittest discover -s "$suite" -v
+          done
