@@ -204,7 +204,12 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
     switch (targetStatus) {
       case IN_TRANSIT -> delivery.startTransit();
       case FAILED_ATTEMPT -> delivery.failAttempt(reason);
-      case ASSIGNED -> delivery.assignRoute(delivery.getRouteId());
+      case ASSIGNED -> {
+        if (delivery.getRouteId() == null) {
+          throw new ContractException("CONFLICT");
+        }
+        delivery.assignRoute(delivery.getRouteId());
+      }
       default -> throw new ContractException("VALIDATION_ERROR");
     }
 

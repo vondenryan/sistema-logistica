@@ -83,6 +83,22 @@ class DeliveryControllerTest {
   }
 
   @Test
+  void patchStatus_assignedAfterFailedAttempt_preservesRoute() throws Exception {
+    fakeActor.asDriver(FakeRouteSnapshotPort.CANONICAL_DRIVER_ID);
+    deliveryService.updateStatus(deliveryId, "IN_TRANSIT", null);
+    deliveryService.updateStatus(deliveryId, "FAILED_ATTEMPT", "Nobody answered");
+
+    mockMvc
+        .perform(
+            patch("/api/v1/deliveries/{id}/status", deliveryId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"ASSIGNED\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ASSIGNED"))
+        .andExpect(jsonPath("$.routeId").value(FakeRouteSnapshotPort.CANONICAL_ROUTE_ID.toString()));
+  }
+
+  @Test
   void patchStatus_failedAttempt_withoutReason_returns400() throws Exception {
     fakeActor.asDriver(FakeRouteSnapshotPort.CANONICAL_DRIVER_ID);
 
