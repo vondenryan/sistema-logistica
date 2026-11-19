@@ -1,0 +1,1 @@
+package contracts.v1;  import java.util.*;  public interface FleetReleasePort {   ReleaseReceipt release(ReleaseRequest request); }

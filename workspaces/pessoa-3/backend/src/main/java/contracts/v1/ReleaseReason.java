@@ -1,0 +1,1 @@
+package contracts.v1;  public enum ReleaseReason {   ROUTE_COMPLETED,   ROUTE_CANCELLED }
