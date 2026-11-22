@@ -39,4 +39,12 @@ Nomes são aparados e únicos sem distinção entre maiúsculas e minúsculas; c
 
 O fake `CurrentActorPort` está disponível somente no perfil `dev`. Fora desse perfil, este workspace ainda não integra JWT e responde 401 `UNAUTHENTICATED` aos endpoints protegidos; não habilite o fake em ambientes compartilhados ou de produção.
 
+## Cadastro de origens
+
+O backend expõe `GET /api/v1/origins?page=0&size=20`, `GET /api/v1/origins/{originId}`, `POST /api/v1/origins` e `PATCH /api/v1/origins/{originId}`. A coleção segue a paginação de lojas. A origem retorna `{id,type,storeId,address,active}`; `type` é `STORE` ou `DISTRIBUTION_CENTER`, e ambos exigem um `storeId` já existente. O endereço segue `AddressSnapshot` em `docs/CONTRACTS_V1.md`. O PATCH aceita `type`, `storeId`, `address` (objeto completo) e/ou `active`; use `{"active":false}` para inativar, sem exclusão física.
+
+Somente `ADMIN` e `OPERATOR` podem listar, criar ou atualizar origens. `STORE` pode consultar somente origens vinculadas à sua loja; tentativa de acesso a outra origem retorna 404. `DRIVER` recebe 403. Requests desconhecidos são rejeitados, e erros usam RFC 9457 `ProblemDetail`.
+
+**Ponto em aberto:** o contrato não define se uma origem pode estar vinculada a uma loja inativa. Essa regra não é aplicada pelo cadastro e requer decisão de negócio posterior.
+
 As credenciais do `.env.example` são somente para desenvolvimento local; não use `.env` em ambientes compartilhados ou de produção.
