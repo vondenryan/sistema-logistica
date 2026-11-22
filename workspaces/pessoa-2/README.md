@@ -48,3 +48,13 @@ Somente `ADMIN` e `OPERATOR` podem listar, criar ou atualizar origens. `STORE` p
 **Ponto em aberto:** o contrato não define se uma origem pode estar vinculada a uma loja inativa. Essa regra não é aplicada pelo cadastro e requer decisão de negócio posterior.
 
 As credenciais do `.env.example` são somente para desenvolvimento local; não use `.env` em ambientes compartilhados ou de produção.
+
+## Cadastro de fornecedores
+
+O backend expõe `GET /api/v1/suppliers?page=0&size=20`, `GET /api/v1/suppliers/{supplierId}`, `POST /api/v1/suppliers` e `PATCH /api/v1/suppliers/{supplierId}`. A paginação replica o padrão de lojas e origens, com tamanho de 1 a 100 e ordenação estável por criação e ID.
+
+O POST recebe `{name,contactEmail?,storeId}`. `name` é obrigatório (máximo 160 caracteres), `contactEmail` é opcional (máximo 254 caracteres), e `storeId` deve apontar para uma loja existente. A resposta contém `{id,name,contactEmail?,storeId}` e omite `contactEmail` quando ausente. Identificadores são gerados no servidor.
+
+Somente `ADMIN` e `OPERATOR` podem listar, criar ou atualizar fornecedores. `STORE` recebe 403 na listagem, criação e atualização e só consulta fornecedores vinculados à própria loja; outro fornecedor fora do escopo retorna 404. `DRIVER` recebe 403.
+
+**Pontos em aberto/decisões locais:** o contrato não define como `active` aparece nas respostas de fornecedor, portanto esta implementação não expõe `active`; a inativação com `{"active":false}` fica interna e não exclui fisicamente nem deixa o fornecedor invisível. O PATCH não consegue apagar `contactEmail`: `contactEmail:null` é rejeitado com 400 e o campo omitido preserva o valor atual. IDs inválidos em GET/PATCH retornam 400 `VALIDATION_ERROR`.
