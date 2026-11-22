@@ -39,6 +39,10 @@ Nomes são aparados e únicos sem distinção entre maiúsculas e minúsculas; c
 
 O fake `CurrentActorPort` está disponível somente no perfil `dev`. Fora desse perfil, este workspace ainda não integra JWT e responde 401 `UNAUTHENTICATED` aos endpoints protegidos; não habilite o fake em ambientes compartilhados ou de produção.
 
+## Contratos compartilhados
+
+O pacote Java `br.com.sistemalogistica.pessoa2.contracts.v1` no backend é uma cópia local provisória dos contratos compartilhados, incluindo `PartnerLookupPort` e seus snapshots. Ele permanece no workspace até o módulo compartilhado ser congelado; não há uma pasta `contracts/v1/` na raiz do repositório.
+
 ## Cadastro de origens
 
 O backend expõe `GET /api/v1/origins?page=0&size=20`, `GET /api/v1/origins/{originId}`, `POST /api/v1/origins` e `PATCH /api/v1/origins/{originId}`. A coleção segue a paginação de lojas. A origem retorna `{id,type,storeId,address,active}`; `type` é `STORE` ou `DISTRIBUTION_CENTER`, e ambos exigem um `storeId` já existente. O endereço segue `AddressSnapshot` em `docs/CONTRACTS_V1.md`. O PATCH aceita `type`, `storeId`, `address` (objeto completo) e/ou `active`; use `{"active":false}` para inativar, sem exclusão física.
