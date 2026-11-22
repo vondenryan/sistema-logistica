@@ -17,7 +17,7 @@ Copy-Item .env.example .env
 docker compose up -d --wait
 ```
 
-O Flyway aplica `backend/src/main/resources/db/migration` ao iniciar a aplicação. A migração inicial cria apenas o marcador idempotente do workspace; não há cadastros de domínio nesta etapa.
+O Flyway aplica `backend/src/main/resources/db/migration` ao iniciar a aplicação. A migration `V2` cria a tabela de lojas, com índice único case-insensitive para o nome.
 
 ## Build
 
@@ -29,8 +29,14 @@ npm ci
 npm run build
 ```
 
-Para executar, inicie o backend com `.\mvnw.cmd spring-boot:run` e, em outro terminal, o frontend com `npm run dev`. Para parar o banco sem remover o volume, execute `docker compose down`.
+Para executar o backend isolado, ative explicitamente o perfil `dev` (que fornece um ator ADMIN fixo somente para desenvolvimento) com `.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev`. Em outro terminal, inicie o frontend com `npm run dev`. Para parar o banco sem remover o volume, execute `docker compose down`.
 
-Quando as APIs forem implementadas, os erros HTTP deverão seguir RFC 9457 `ProblemDetail` e as extensões `code`, `details` e `traceId` definidas em `docs/CONTRACTS_V1.md`. Cadastros referenciados deverão ser inativados com `active=false`, sem exclusão física. As APIs e os cadastros ainda não fazem parte deste scaffold.
+## Cadastro de lojas
+
+O backend expõe `GET /api/v1/stores?page=0&size=20`, `GET /api/v1/stores/{storeId}`, `POST /api/v1/stores` e `PATCH /api/v1/stores/{storeId}`. A listagem usa paginação (tamanho de 1 a 100) e ordenação estável por criação e ID. Os requests usam `{ "name": "...", "active": true }`; `active` é obrigatório no POST. O PATCH aceita `name`, `active` ou ambos. Para inativar uma loja, envie `{"active":false}`; não há exclusão física.
+
+Nomes são aparados e únicos sem distinção entre maiúsculas e minúsculas; criar ou renomear para um nome existente retorna HTTP 409 `CONFLICT`. `ADMIN` e `OPERATOR` podem listar, criar e atualizar; `STORE` só pode consultar a própria loja. Erros de validação e domínio seguem RFC 9457 `ProblemDetail`, com `code` e `details`, conforme `docs/CONTRACTS_V1.md`.
+
+O fake `CurrentActorPort` está disponível somente no perfil `dev`. Fora desse perfil, este workspace ainda não integra JWT e responde 401 `UNAUTHENTICATED` aos endpoints protegidos; não habilite o fake em ambientes compartilhados ou de produção.
 
 As credenciais do `.env.example` são somente para desenvolvimento local; não use `.env` em ambientes compartilhados ou de produção.
