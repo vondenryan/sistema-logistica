@@ -1,5 +1,16 @@
-# Vue 3 + TypeScript + Vite
+# Frontend — Pessoa 2
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Aplicação Vue 3 + TypeScript para o cadastro de lojas do workspace.
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## Desenvolvimento local
+
+1. Inicie o backend com o perfil Spring `dev` na porta `8082`.
+2. Na pasta `frontend`, execute `npm install` e `npm run dev`.
+3. Abra o endereço informado pelo Vite. As chamadas `/api` são encaminhadas pelo proxy local para `http://localhost:8082`; não é necessário habilitar CORS no backend.
+
+O seletor de perfil e os headers `X-Dev-Role` e `X-Dev-Store-Id` são exclusivos do modo de desenvolvimento local. O seletor suporta `ADMIN`, `OPERATOR` e `STORE`; para `STORE`, informe o UUID da loja. O backend só aceita esses headers no perfil Spring `dev`. Sem headers, mantém a identidade configurada em `application-dev.properties`. Não use esses headers em ambientes integrados ou de produção.
+
+## Validação
+
+- `npm test` executa os testes Vitest.
+- `npm run build` verifica os tipos e gera a aplicação de produção.
