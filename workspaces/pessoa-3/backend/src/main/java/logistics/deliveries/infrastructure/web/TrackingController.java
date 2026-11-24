@@ -19,15 +19,20 @@ public class TrackingController {
   private final TrackingService trackingService;
   private final TrackingRateLimiter rateLimiter;
 
-  public TrackingController(TrackingService trackingService, TrackingRateLimiter rateLimiter) {
+  private final ClientIpResolver clientIps;
+
+  public TrackingController(
+      TrackingService trackingService,
+      TrackingRateLimiter rateLimiter,
+      ClientIpResolver clientIps) {
     this.trackingService = trackingService;
     this.rateLimiter = rateLimiter;
+    this.clientIps = clientIps;
   }
 
   @GetMapping("/{code}")
-  public ResponseEntity<?> track(
-      @PathVariable("code") String code, HttpServletRequest request) {
-    String clientIp = resolveClientIp(request);
+  public ResponseEntity<?> track(@PathVariable("code") String code, HttpServletRequest request) {
+    String clientIp = clientIps.resolve(request);
     if (!rateLimiter.allow(clientIp)) {
       Object attr = request.getAttribute(RequestIdFilter.REQUEST_ID_ATTR);
       String traceId = attr != null ? attr.toString() : null;
@@ -41,15 +46,5 @@ public class TrackingController {
 
     PublicTrackingView view = trackingService.trackByCode(code);
     return ResponseEntity.ok(view);
-  }
-
-  private static String resolveClientIp(HttpServletRequest request) {
-    String forwarded = request.getHeader("X-Forwarded-For");
-    if (forwarded != null && !forwarded.isBlank()) {
-      int comma = forwarded.indexOf(',');
-      return (comma >= 0 ? forwarded.substring(0, comma) : forwarded).trim();
-    }
-    String remote = request.getRemoteAddr();
-    return remote != null ? remote : "unknown";
   }
 }

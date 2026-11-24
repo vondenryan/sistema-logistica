@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ApiError,
   deliveriesApi,
@@ -9,6 +9,9 @@ import {
 
 const deliveries = ref<DeliverySnapshot[]>([])
 const totalItems = ref(0)
+const currentPage = ref(0)
+const pageSize = 20
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)))
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 const eventsByDelivery = reactive<Record<string, DeliveryEvent[]>>({})
@@ -16,13 +19,16 @@ const expandedId = ref<string | null>(null)
 const reasonInputs = reactive<Record<string, string>>({})
 const receiverInputs = reactive<Record<string, string>>({})
 
-async function loadDeliveries() {
+async function loadDeliveries(targetPage = currentPage.value) {
+  if (loading.value || targetPage < 0) return
   loading.value = true
   errorMessage.value = null
   try {
-    const page = await deliveriesApi.listMyDeliveries(0, 20)
+    const page = await deliveriesApi.listMyDeliveries(targetPage, pageSize)
     deliveries.value = page.items
     totalItems.value = page.totalItems
+    currentPage.value = page.page
+    expandedId.value = null
   } catch (err) {
     errorMessage.value =
       err instanceof ApiError ? err.message : 'Erro ao carregar entregas do motorista.'
@@ -102,7 +108,7 @@ function replaceDelivery(updated: DeliverySnapshot) {
   }
 }
 
-onMounted(loadDeliveries)
+onMounted(() => loadDeliveries())
 </script>
 
 <template>
@@ -110,11 +116,21 @@ onMounted(loadDeliveries)
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center">
         <h2 style="margin: 0">Minhas Entregas ({{ totalItems }})</h2>
-        <button class="btn btn-secondary" :disabled="loading" @click="loadDeliveries">
+        <button class="btn btn-secondary" :disabled="loading" @click="loadDeliveries()">
           {{ loading ? 'Atualizando...' : 'Atualizar' }}
         </button>
       </div>
     </div>
+
+    <nav aria-label="Paginação das entregas" class="actions-row">
+      <button class="btn btn-secondary" :disabled="loading || currentPage === 0" @click="loadDeliveries(currentPage - 1)">
+        Anterior
+      </button>
+      <span aria-live="polite">Página {{ currentPage + 1 }} de {{ totalPages }}</span>
+      <button class="btn btn-secondary" :disabled="loading || currentPage + 1 >= totalPages" @click="loadDeliveries(currentPage + 1)">
+        Próxima
+      </button>
+    </nav>
 
     <div v-if="errorMessage" class="alert-error" role="alert">
       {{ errorMessage }}

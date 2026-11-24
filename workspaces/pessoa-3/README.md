@@ -70,6 +70,14 @@ npm run build
 
 ---
 
+### Correções da revisão do PR #10
+
+O rastreamento usa o IP da conexão por padrão; proxies devem ser explicitamente autorizados e sobrescrever o cabeçalho encaminhado. O limitador tem capacidade máxima e expiração de clientes inativos. Veja [configuração e limites](INTEGRATION.md#ip-de-rastreamento-e-capacidade-do-limitador).
+
+O painel permite navegar entre páginas, atualizar a página atual e alterar o status de entregas depois dos primeiros 20 itens. O backend rejeita deslocamentos de paginação acima do intervalo suportado.
+
+Validação em 24/11/2026: 68 testes backend e 6 frontend aprovados, além dos builds. No ambiente remoto sem `javac`, o backend foi compilado e testado em Java 21 com Eclipse, usando uma cópia temporária do POM (compiler plugin 3.14.1 e plexus-compiler-eclipse 2.15.0); o POM versionado permaneceu intacto. Os testes de acesso direto e proxy usam MockMvc com o endereço da conexão controlado; não foi validado um proxy de implantação real.
+
 ## 6. Endpoints REST (Sprints 1 e 2)
 
 | Método | Endpoint | Descrição | Regra de Autorização |

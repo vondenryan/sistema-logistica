@@ -144,4 +144,65 @@ describe('DriverPanelView', () => {
     expect(wrapper.text()).toContain('DELIVERED')
     expect(wrapper.text()).toContain('Maria Silva')
   })
+  it('navigates to the 21st delivery, updates it, refreshes the current page and returns', async () => {
+    const firstItems = Array.from({ length: 20 }, (_, i) => ({
+      deliveryId: `delivery-${i}`, orderId: `order-${i}`, routeId: 'route',
+      status: 'ASSIGNED', updatedAt: '2026-11-14T12:00:00Z', receiverName: null
+    }))
+    const last = { ...firstItems[0], deliveryId: 'delivery-21', orderId: 'order-21' }
+    const moved = { ...last, status: 'IN_TRANSIT' }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ items: firstItems, page: 0, size: 20, totalItems: 21 }))
+      .mockResolvedValueOnce(jsonResponse({ items: [last], page: 1, size: 20, totalItems: 21 }))
+      .mockResolvedValueOnce(jsonResponse(moved))
+      .mockResolvedValueOnce(jsonResponse({ items: [moved], page: 1, size: 20, totalItems: 21 }))
+      .mockResolvedValueOnce(jsonResponse({ items: firstItems, page: 0, size: 20, totalItems: 21 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(DriverPanelView)
+    await flushPromises()
+    const nav = () => wrapper.get('nav[aria-label="Paginação das entregas"]')
+    const previous = () => nav().findAll('button')[0]
+    const next = () => nav().findAll('button')[1]
+    expect(previous().attributes('disabled')).toBeDefined()
+    expect(wrapper.findAll('article')).toHaveLength(20)
+    await next().trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/deliveries/my?page=1&size=20')
+    expect(nav().text()).toContain('Página 2 de 2')
+    expect(next().attributes('disabled')).toBeDefined()
+    expect(wrapper.findAll('article')).toHaveLength(1)
+    expect(wrapper.get('article').attributes('data-delivery-id')).toBe(last.deliveryId)
+    await wrapper.get('article button.btn-primary').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/deliveries/delivery-21/status', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ status: 'IN_TRANSIT' }) }))
+    expect(wrapper.get('article').text()).toContain('IN_TRANSIT')
+    await wrapper.get('.card button').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/deliveries/my?page=1&size=20')
+    await previous().trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/v1/deliveries/my?page=0&size=20')
+    expect(wrapper.findAll('article')).toHaveLength(20)
+    expect(nav().text()).toContain('Página 1 de 2')
+  })
+
+  it('preserves the current page after navigation fails and allows retry', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ items: [], page: 0, size: 20, totalItems: 21 }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'DEPENDENCY_UNAVAILABLE' }, 503))
+      .mockResolvedValueOnce(jsonResponse({ items: [], page: 1, size: 20, totalItems: 21 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(DriverPanelView)
+    await flushPromises()
+    const next = () => wrapper.get('nav').findAll('button')[1]
+    await next().trigger('click')
+    await flushPromises()
+    expect(wrapper.get('nav').text()).toContain('Página 1 de 2')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await next().trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/deliveries/my?page=1&size=20')
+    expect(wrapper.get('nav').text()).toContain('Página 2 de 2')
+  })
+
 })

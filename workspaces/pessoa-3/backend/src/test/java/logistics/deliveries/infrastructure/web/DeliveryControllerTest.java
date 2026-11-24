@@ -254,4 +254,24 @@ class DeliveryControllerTest {
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
   }
+
+  @Test
+  void myDeliveries_rejectsOffsetOverflow() throws Exception {
+    fakeActor.asDriver(FakeRouteSnapshotPort.CANONICAL_DRIVER_ID);
+    for (String page : new String[] {"107374183", "2147483647"}) {
+      mockMvc.perform(get("/api/v1/deliveries/my").param("page", page).param("size", "20"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+  }
+
+  @Test
+  void myDeliveries_acceptsLargestSupportedOffsetWithoutReturningFirstPage() throws Exception {
+    fakeActor.asDriver(FakeRouteSnapshotPort.CANONICAL_DRIVER_ID);
+    mockMvc.perform(get("/api/v1/deliveries/my").param("page", "2147483647").param("size", "1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.page").value(2147483647))
+        .andExpect(jsonPath("$.items.length()").value(0))
+        .andExpect(jsonPath("$.totalItems").value(1));
+  }
 }

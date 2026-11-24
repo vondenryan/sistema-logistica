@@ -23,7 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest
+@SpringBootTest(properties = "tracking.trusted-proxy-ips=192.0.2.10")
 @AutoConfigureMockMvc
 @Transactional
 class TrackingControllerTest {
@@ -41,8 +41,7 @@ class TrackingControllerTest {
 
     fakeActor.asOperator();
     DeliverySnapshot created =
-        deliveryService.ensureCreated(
-            FakeOrderSnapshotPort.CANONICAL_ORDER_ID, UUID.randomUUID());
+        deliveryService.ensureCreated(FakeOrderSnapshotPort.CANONICAL_ORDER_ID, UUID.randomUUID());
     deliveryService.assignRoute(
         FakeOrderSnapshotPort.CANONICAL_ORDER_ID,
         FakeRouteSnapshotPort.CANONICAL_ROUTE_ID,
@@ -129,7 +128,11 @@ class TrackingControllerTest {
       mockMvc
           .perform(
               get("/api/v1/tracking/{code}", "TRK-PROBE-" + i)
-                  .header("X-Forwarded-For", probeIp))
+                  .with(
+                      req -> {
+                        req.setRemoteAddr(probeIp);
+                        return req;
+                      }))
           .andExpect(status().isNotFound());
     }
 
@@ -137,7 +140,11 @@ class TrackingControllerTest {
     mockMvc
         .perform(
             get("/api/v1/tracking/{code}", FakeOrderSnapshotPort.CANONICAL_TRACKING_CODE)
-                .header("X-Forwarded-For", probeIp))
+                .with(
+                    req -> {
+                      req.setRemoteAddr(probeIp);
+                      return req;
+                    }))
         .andExpect(status().isTooManyRequests())
         .andExpect(header().exists("Retry-After"))
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -148,7 +155,86 @@ class TrackingControllerTest {
     mockMvc
         .perform(
             get("/api/v1/tracking/{code}", FakeOrderSnapshotPort.CANONICAL_TRACKING_CODE)
-                .header("X-Forwarded-For", "203.0.113.88"))
+                .with(
+                    req -> {
+                      req.setRemoteAddr("203.0.113.88");
+                      return req;
+                    }))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void directClientCannotResetLimitWithForgedHeaders() throws Exception {
+    for (int i = 0; i < 30; i++) {
+      mockMvc
+          .perform(
+              get("/api/v1/tracking/TRK-UNKNOWN")
+                  .with(
+                      req -> {
+                        req.setRemoteAddr("203.0.113.7");
+                        return req;
+                      })
+                  .header("X-Forwarded-For", "198.51.100." + i)
+                  .header("X-Real-IP", "198.51.100." + i)
+                  .header("Forwarded", "for=198.51.100." + i))
+          .andExpect(status().isNotFound());
+    }
+    mockMvc
+        .perform(
+            get("/api/v1/tracking/TRK-UNKNOWN")
+                .with(
+                    req -> {
+                      req.setRemoteAddr("203.0.113.7");
+                      return req;
+                    })
+                .header("X-Forwarded-For", "198.51.100.99"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+  }
+
+  @Test
+  void trustedProxyKeepsSeparateClientLimitsAndDirectPeerSharesItsWindow() throws Exception {
+    for (int i = 0; i < 30; i++) {
+      mockMvc
+          .perform(
+              get("/api/v1/tracking/TRK-UNKNOWN")
+                  .with(
+                      req -> {
+                        req.setRemoteAddr("192.0.2.10");
+                        return req;
+                      })
+                  .header("X-Forwarded-For", "203.0.113.7"))
+          .andExpect(status().isNotFound());
+    }
+    mockMvc
+        .perform(
+            get("/api/v1/tracking/TRK-UNKNOWN")
+                .with(
+                    req -> {
+                      req.setRemoteAddr("192.0.2.10");
+                      return req;
+                    })
+                .header("X-Forwarded-For", "203.0.113.7"))
+        .andExpect(status().isTooManyRequests());
+    mockMvc
+        .perform(
+            get("/api/v1/tracking/{code}", FakeOrderSnapshotPort.CANONICAL_TRACKING_CODE)
+                .with(
+                    req -> {
+                      req.setRemoteAddr("192.0.2.10");
+                      return req;
+                    })
+                .header("X-Forwarded-For", "203.0.113.8"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            get("/api/v1/tracking/TRK-UNKNOWN")
+                .with(
+                    req -> {
+                      req.setRemoteAddr("203.0.113.7");
+                      return req;
+                    })
+                .header("X-Forwarded-For", "198.51.100.99"))
+        .andExpect(status().isTooManyRequests());
   }
 }

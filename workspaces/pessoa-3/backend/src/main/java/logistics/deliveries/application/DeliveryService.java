@@ -264,7 +264,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
 
   @Transactional(readOnly = true)
   public DeliveryPage getMyDeliveries(int page, int size) {
-    if (page < 0 || size < 1 || size > 100) {
+    if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
       throw new ContractException("VALIDATION_ERROR");
     }
 
@@ -285,7 +285,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       return new DeliveryPage(Collections.emptyList(), page, size, 0L);
     }
 
-    int offset = page * size;
+    int offset = (int) ((long) page * size);
     List<DeliverySnapshot> items =
         deliveryRepository.findByRouteIds(driverRouteIds, offset, size).stream()
             .map(Delivery::toSnapshot)
