@@ -1,0 +1,32 @@
+{
+  "orderId": "44444444-4444-4444-8444-444444444444",
+  "storeId": "22222222-2222-4222-8222-222222222222",
+  "originId": "11111111-1111-4111-8111-111111111111",
+  "status": "CONFIRMED",
+  "origin": {
+    "line1": "Rua Exemplo, 100",
+    "line2": null,
+    "city": "Cidade Fictícia",
+    "state": "SC",
+    "postalCode": "00000-000",
+    "country": "BR",
+    "latitude": -26.480000,
+    "longitude": -49.070000
+  },
+  "destination": {
+    "line1": "Rua Destino, 200",
+    "line2": null,
+    "city": "Cidade Fictícia",
+    "state": "SC",
+    "postalCode": "00000-000",
+    "country": "BR",
+    "latitude": -26.490000,
+    "longitude": -49.080000
+  },
+  "recipientName": "Cliente Fictício",
+  "recipientEmail": "cliente@example.invalid",
+  "trackingCode": "TRK-7M4Q9X2K8P",
+  "totalWeightKg": "40.000",
+  "freightAmount": "30.00",
+  "currency": "BRL"
+}

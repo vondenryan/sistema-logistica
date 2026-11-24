@@ -263,7 +263,11 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
   }
 
   @Transactional(readOnly = true)
-  public List<DeliverySnapshot> getMyDeliveries(int page, int size) {
+  public DeliveryPage getMyDeliveries(int page, int size) {
+    if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
+      throw new ContractException("VALIDATION_ERROR");
+    }
+
     ActorContext actor = currentActorPort.requireActor();
     if (actor.role() != Role.DRIVER || actor.driverId() == null) {
       throw new ContractException("FORBIDDEN");
@@ -278,13 +282,16 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
     }
 
     if (driverRouteIds.isEmpty()) {
-      return Collections.emptyList();
+      return new DeliveryPage(Collections.emptyList(), page, size, 0L);
     }
 
-    int offset = Math.max(0, page) * Math.max(1, size);
-    return deliveryRepository.findByRouteIds(driverRouteIds, offset, size).stream()
-        .map(Delivery::toSnapshot)
-        .toList();
+    int offset = (int) ((long) page * size);
+    List<DeliverySnapshot> items =
+        deliveryRepository.findByRouteIds(driverRouteIds, offset, size).stream()
+            .map(Delivery::toSnapshot)
+            .toList();
+    long totalItems = deliveryRepository.countByRouteIds(driverRouteIds);
+    return new DeliveryPage(items, page, size, totalItems);
   }
 
   @Transactional(readOnly = true)

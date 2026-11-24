@@ -1,0 +1,17 @@
+{
+  "status": "IN_TRANSIT",
+  "milestones": [
+    {
+      "status": "PENDING",
+      "at": "2026-11-14T09:00:00.000Z"
+    },
+    {
+      "status": "ASSIGNED",
+      "at": "2026-11-14T10:00:00.000Z"
+    },
+    {
+      "status": "IN_TRANSIT",
+      "at": "2026-11-14T12:00:00.000Z"
+    }
+  ]
+}

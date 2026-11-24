@@ -3,6 +3,7 @@ package logistics.deliveries.infrastructure.web;
 import contracts.v1.DeliverySnapshot;
 import java.util.List;
 import java.util.UUID;
+import logistics.deliveries.application.DeliveryPage;
 import logistics.deliveries.application.DeliveryService;
 import logistics.deliveries.domain.DeliveryEvent;
 import org.springframework.http.ResponseEntity;
@@ -25,10 +26,10 @@ public class DeliveryController {
   }
 
   @GetMapping("/my")
-  public ResponseEntity<List<DeliverySnapshot>> getMyDeliveries(
+  public ResponseEntity<DeliveryPage> getMyDeliveries(
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
-    List<DeliverySnapshot> deliveries = deliveryService.getMyDeliveries(page, size);
+    DeliveryPage deliveries = deliveryService.getMyDeliveries(page, size);
     return ResponseEntity.ok(deliveries);
   }
 

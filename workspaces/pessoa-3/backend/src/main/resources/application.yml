@@ -1,4 +1,5 @@
 server:
+  forward-headers-strategy: none
   port: ${SERVER_PORT:8083}
 
 spring:
@@ -20,3 +21,8 @@ logging:
   level:
     root: INFO
     logistics: DEBUG
+
+tracking:
+  trusted-proxy-ips: ${TRACKING_TRUSTED_PROXY_IPS:}
+  rate-limit:
+    max-clients: ${TRACKING_RATE_LIMIT_MAX_CLIENTS:10000}

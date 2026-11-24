@@ -15,6 +15,8 @@ public interface DeliveryRepository {
 
   List<Delivery> findByRouteIds(List<UUID> routeIds, int offset, int limit);
 
+  long countByRouteIds(List<UUID> routeIds);
+
   void recordEvent(DeliveryEvent event);
 
   List<DeliveryEvent> findEventsByDeliveryId(UUID deliveryId);
