@@ -170,6 +170,11 @@ class DeliveryAuthorizationTest {
     }
 
     @Override
+    public long countByRouteIds(List<UUID> rIds) {
+      return map.values().stream().filter(d -> rIds.contains(d.getRouteId())).count();
+    }
+
+    @Override
     public void recordEvent(DeliveryEvent e) {
       events.add(e);
     }

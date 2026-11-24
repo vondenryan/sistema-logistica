@@ -174,6 +174,73 @@ class DeliveryControllerTest {
   }
 
   // ------------------------------------------------------------------ //
+  //  GET /api/v1/deliveries/my & Cross-Driver Isolation                 //
+  // ------------------------------------------------------------------ //
+
+  @Test
+  void getMyDeliveries_forAssignedDriver_returnsPaginatedResult() throws Exception {
+    fakeActor.asDriver(FakeRouteSnapshotPort.CANONICAL_DRIVER_ID);
+
+    mockMvc
+        .perform(get("/api/v1/deliveries/my").param("page", "0").param("size", "20"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.items.length()").value(1))
+        .andExpect(jsonPath("$.items[0].deliveryId").value(deliveryId.toString()))
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(20))
+        .andExpect(jsonPath("$.totalItems").value(1));
+  }
+
+  @Test
+  void getMyDeliveries_forNonDriver_returns403() throws Exception {
+    fakeActor.asOperator();
+
+    mockMvc
+        .perform(get("/api/v1/deliveries/my"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void getMyDeliveries_withInvalidPagination_returns400() throws Exception {
+    fakeActor.asDriver(FakeRouteSnapshotPort.CANONICAL_DRIVER_ID);
+
+    mockMvc
+        .perform(get("/api/v1/deliveries/my").param("page", "-1").param("size", "20"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+    mockMvc
+        .perform(get("/api/v1/deliveries/my").param("page", "0").param("size", "101"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void otherDriver_cannotReadOrMutateAssignedDelivery_returns403() throws Exception {
+    fakeActor.asDriver(UUID.randomUUID());
+
+    mockMvc
+        .perform(get("/api/v1/deliveries/{id}", deliveryId))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+    mockMvc
+        .perform(get("/api/v1/deliveries/{id}/events", deliveryId))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/deliveries/{id}/status", deliveryId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"IN_TRANSIT\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  // ------------------------------------------------------------------ //
   //  GET /api/v1/deliveries/{id}/events                                 //
   // ------------------------------------------------------------------ //
 

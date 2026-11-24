@@ -52,21 +52,31 @@ A API estará acessível em `http://localhost:8083`.
 
 ## 5. Executando os Testes
 
-Os testes são totalmente autocontidos e executam sem necessidade de serviços externos ou Docker ativos (utilizando banco H2 em modo de compatibilidade PostgreSQL com Flyway):
+Os testes do backend são totalmente autocontidos e executam sem necessidade de serviços externos ou Docker ativos (utilizando banco H2 em modo de compatibilidade PostgreSQL com Flyway):
 
 ```bash
 cd backend
 mvn test
 ```
 
+Para o frontend Vue 3 (painel do motorista e rastreamento público):
+
+```bash
+cd frontend
+npm ci
+npm test
+npm run build
+```
+
 ---
 
-## 6. Endpoints REST da Sprint 1
+## 6. Endpoints REST (Sprints 1 e 2)
 
 | Método | Endpoint | Descrição | Regra de Autorização |
 |---|---|---|---|
-| `GET` | `/api/v1/deliveries/my` | Lista entregas do motorista | DRIVER atribuído |
+| `GET` | `/api/v1/deliveries/my` | Lista paginada de entregas do motorista | DRIVER autenticado |
 | `GET` | `/api/v1/deliveries/{id}` | Consulta detalhes da entrega | DRIVER atribuído, OPERATOR ou ADMIN |
 | `GET` | `/api/v1/deliveries/{id}/events` | Lista histórico imutável de eventos | DRIVER atribuído, OPERATOR ou ADMIN |
 | `PATCH` | `/api/v1/deliveries/{id}/status` | Atualiza status (`IN_TRANSIT`, `FAILED_ATTEMPT`, `ASSIGNED`) | DRIVER atribuído ou OPERATOR |
 | `POST` | `/api/v1/deliveries/{id}/complete` | Conclui entrega com nome do recebedor | DRIVER atribuído ou OPERATOR |
+| `GET` | `/api/v1/tracking/{code}` | Rastreamento público (`status` e `milestones`) | Público (rate limit por IP) |

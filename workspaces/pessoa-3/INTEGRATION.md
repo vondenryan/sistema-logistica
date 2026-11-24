@@ -28,8 +28,9 @@ Este documento detalha as portas implementadas, consumidas e a estratégia de su
 
 ## 3. Endpoints REST Expostos (`/api/v1`)
 
-- `GET /api/v1/deliveries/my`: Entregas atribuídas ao motorista autenticado (`Role.DRIVER`).
+- `GET /api/v1/deliveries/my`: Entregas paginadas (`{items, page, size, totalItems}`) atribuídas ao motorista autenticado (`Role.DRIVER`).
 - `PATCH /api/v1/deliveries/{id}/status`: Transições de status (`IN_TRANSIT`, `FAILED_ATTEMPT`, `ASSIGNED`).
 - `POST /api/v1/deliveries/{id}/complete`: Conclusão da entrega (`DELIVERED`) com `receiverName` obrigatório.
 - `GET /api/v1/deliveries/{id}`: Detalhes da entrega com validação de escopo do ator.
 - `GET /api/v1/deliveries/{id}/events`: Histórico auditável e imutável de eventos da entrega.
+- `GET /api/v1/tracking/{code}`: Rastreamento público sem JWT com rate limit (`429 RATE_LIMITED`), expondo apenas `status` e `milestones`.
