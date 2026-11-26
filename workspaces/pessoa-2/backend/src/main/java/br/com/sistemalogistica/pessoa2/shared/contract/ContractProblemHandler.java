@@ -82,7 +82,8 @@ public class ContractProblemHandler {
 			case "UNAUTHENTICATED" -> HttpStatus.UNAUTHORIZED;
 			case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
 			case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
-			case "CONFLICT" -> HttpStatus.CONFLICT;
+			case "CONFLICT", "NO_ELIGIBLE_RESOURCE", "IDEMPOTENCY_CONFLICT" -> HttpStatus.CONFLICT;
+			case "PRECONDITION_FAILED" -> HttpStatus.UNPROCESSABLE_ENTITY;
 			default -> HttpStatus.INTERNAL_SERVER_ERROR;
 		};
 	}

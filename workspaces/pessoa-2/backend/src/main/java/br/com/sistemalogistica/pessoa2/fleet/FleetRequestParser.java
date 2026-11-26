@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 
 import tools.jackson.databind.JsonNode;
 
+import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 
 final class FleetRequestParser {

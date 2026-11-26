@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DriverRepository extends JpaRepository<Driver, UUID> {
 	Page<Driver> findAllByOrderByCreatedAtAscIdAsc(Pageable pageable);
+
+	java.util.List<Driver> findAllByActiveTrueOrderByIdAsc();
 }

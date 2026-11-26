@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
 import br.com.sistemalogistica.pessoa2.security.CurrentActorPort;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 
