@@ -156,7 +156,8 @@ h2 {
 }
 
 .profile-form,
-.store-form-panel form {
+.store-form-panel form,
+.lookup-form {
   display: grid;
   grid-template-columns: auto minmax(140px, 1fr) auto;
   align-items: center;
@@ -189,6 +190,26 @@ input[aria-invalid='true'] {
 
 .profile-form .field-help {
   grid-column: 2 / 3;
+}
+
+.lookup-form {
+  max-width: 46rem;
+  margin-top: 1rem;
+}
+
+.lookup-result {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d5dde3;
+  border-radius: 0.4rem;
+  background: #f8fafb;
+}
+
+.lookup-result h3 {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .profile-form button {
@@ -376,6 +397,10 @@ th {
   }
 
   .profile-form {
+    grid-template-columns: 1fr;
+  }
+
+  .lookup-form {
     grid-template-columns: 1fr;
   }
 
