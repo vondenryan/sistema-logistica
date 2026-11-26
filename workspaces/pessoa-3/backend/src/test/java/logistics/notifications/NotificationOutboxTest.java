@@ -25,11 +25,14 @@ import logistics.notifications.domain.NotificationOutboxEntry;
 import logistics.notifications.domain.NotificationOutboxRepository;
 import logistics.notifications.domain.OutboxStatus;
 import logistics.notifications.infrastructure.mail.InMemoryMailSender;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
@@ -37,6 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
 class NotificationOutboxTest {
 
   @Autowired private NotificationService notificationService;
+  @Autowired private JdbcTemplate jdbc;
+  private final UUID noEmailOrderId = UUID.randomUUID();
+  private boolean committedTestData;
   @Autowired private NotificationOutboxRepository outboxRepository;
   @Autowired private InMemoryMailSender inMemoryMailSender;
   @Autowired private DeliveryService deliveryService;
@@ -50,6 +56,33 @@ class NotificationOutboxTest {
     fakeOrders.resetToCanonical();
     fakeRoutes.resetToCanonical();
     fakeActor.reset();
+  }
+
+  private void commitForProcessing() {
+    TestTransaction.flagForCommit();
+    TestTransaction.end();
+    committedTestData = true;
+  }
+
+  @AfterEach
+  void removeCommittedFixtures() {
+    if (!committedTestData) {
+      return;
+    }
+    UUID orderId = FakeOrderSnapshotPort.CANONICAL_ORDER_ID;
+    jdbc.update(
+        "DELETE FROM notifications.notification_outbox WHERE order_id IN (?, ?)",
+        orderId,
+        noEmailOrderId);
+    jdbc.update(
+        """
+        DELETE FROM deliveries.delivery_events WHERE delivery_id IN
+        (SELECT id FROM deliveries.deliveries WHERE order_id IN (?, ?))
+        """,
+        orderId,
+        noEmailOrderId);
+    jdbc.update(
+        "DELETE FROM deliveries.deliveries WHERE order_id IN (?, ?)", orderId, noEmailOrderId);
   }
 
   @Test
@@ -109,6 +142,8 @@ class NotificationOutboxTest {
             FakeOrderSnapshotPort.CANONICAL_ORDER_ID,
             "cliente@example.invalid",
             Instant.now()));
+
+    commitForProcessing();
 
     // First attempt fails
     inMemoryMailSender.failNext(1);
@@ -182,7 +217,6 @@ class NotificationOutboxTest {
     assertEquals(2, entries.size());
 
     // Order without recipientEmail skips notification gracefully
-    UUID noEmailOrderId = UUID.randomUUID();
     AddressSnapshot addr =
         new AddressSnapshot(
             "Rua Sem Email, 1",
@@ -214,6 +248,7 @@ class NotificationOutboxTest {
     assertEquals(DeliveryStatus.PENDING, noEmailDelivery.status());
     notificationService.recordIntent(
         NotificationEventType.ORDER_CONFIRMED, noEmailOrderId, UUID.randomUUID(), Instant.now());
+    commitForProcessing();
     notificationService.processPending(10);
     assertEquals(
         OutboxStatus.SKIPPED,
@@ -241,6 +276,7 @@ class NotificationOutboxTest {
     var deliveryEvent = deliveryService.getEvents(created.deliveryId()).getLast();
     assertEquals(deliveryEvent.id(), pending.getEventId());
     assertNull(pending.getRecipientEmail());
+    commitForProcessing();
 
     assertEquals(0, notificationService.processPending(10));
     var retry = outboxRepository.findByOrderId(orderId).getFirst();

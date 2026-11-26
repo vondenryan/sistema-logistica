@@ -117,21 +117,22 @@ public class JdbcNotificationOutboxRepository implements NotificationOutboxRepos
   }
 
   @Override
-  public List<NotificationOutboxEntry> lockDuePending(Instant now, int limit) {
-    return jdbcTemplate.query(
-        """
-        SELECT id, event_id, event_type, order_id, recipient_email, subject, body,
-               payload_hash, status, attempts, next_retry_at, last_error,
-               occurred_at, created_at, updated_at
-        FROM notifications.notification_outbox
-        WHERE status = 'PENDING' AND next_retry_at <= ?
-        ORDER BY next_retry_at ASC, created_at ASC, id ASC
-        LIMIT ?
-        FOR UPDATE SKIP LOCKED
-        """,
-        rowMapper,
-        Timestamp.from(now),
-        Math.max(1, limit));
+  public Optional<NotificationOutboxEntry> lockNextDuePending(Instant cutoff) {
+    List<NotificationOutboxEntry> rows =
+        jdbcTemplate.query(
+            """
+            SELECT id, event_id, event_type, order_id, recipient_email, subject, body,
+                   payload_hash, status, attempts, next_retry_at, last_error,
+                   occurred_at, created_at, updated_at
+            FROM notifications.notification_outbox
+            WHERE status = 'PENDING' AND next_retry_at <= ?
+            ORDER BY next_retry_at ASC, created_at ASC, id ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            """,
+            rowMapper,
+            Timestamp.from(cutoff));
+    return rows.stream().findFirst();
   }
 
   @Override

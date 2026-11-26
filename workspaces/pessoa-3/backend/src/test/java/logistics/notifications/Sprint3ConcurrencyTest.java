@@ -2,7 +2,7 @@ package logistics.notifications;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.*;
 
 import contracts.v1.*;
 import java.time.Instant;
@@ -15,11 +15,14 @@ import logistics.fakes.FakeCurrentActorPort;
 import logistics.fakes.FakeOrderSnapshotPort;
 import logistics.notifications.application.MailSenderPort;
 import logistics.notifications.application.NotificationService;
+import logistics.notifications.domain.NotificationOutboxEntry;
 import logistics.notifications.domain.NotificationOutboxRepository;
+import logistics.notifications.domain.OutboxStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -37,11 +40,15 @@ class Sprint3ConcurrencyTest {
   @MockitoBean private MailSenderPort mail;
 
   private final UUID eventId = UUID.randomUUID();
+  private final UUID secondEventId = UUID.randomUUID();
   private final Instant occurredAt = Instant.parse("2026-11-26T15:00:00Z");
 
   @AfterEach
   void cleanUp() {
-    jdbc.update("DELETE FROM notifications.notification_outbox WHERE event_id = ?", eventId);
+    jdbc.update(
+        "DELETE FROM notifications.notification_outbox WHERE event_id IN (?, ?)",
+        eventId,
+        secondEventId);
     jdbc.update(
         "DELETE FROM documents.simulated_documents WHERE order_id = ? AND document_type ="
             + " 'CTE_SIMULATED'",
@@ -134,6 +141,63 @@ class Sprint3ConcurrencyTest {
       assertEquals(1, first.get(5, TimeUnit.SECONDS));
     }
     org.mockito.Mockito.verify(mail).send(any(), any(), any());
+  }
+
+  @Test
+  void failedSecondWriteDoesNotRollBackFirstSend() {
+    var first = notifications.enqueue(request("one@example.invalid"));
+    var second =
+        notifications.enqueue(
+            new NotificationRequest(
+                secondEventId,
+                NotificationEventType.ORDER_CONFIRMED,
+                ORDER,
+                "two@example.invalid",
+                occurredAt));
+    // Ensure the first row is selected before the second regardless of timestamp precision.
+    jdbc.update(
+        "UPDATE notifications.notification_outbox SET next_retry_at = ? WHERE id = ?",
+        java.sql.Timestamp.from(occurredAt),
+        first.notificationId());
+    doAnswer(
+            call -> {
+              NotificationOutboxEntry entry = call.getArgument(0);
+              if (entry.getId().equals(second.notificationId())) {
+                throw new DataAccessResourceFailureException(
+                    "Simulated second result write failure");
+              }
+              return call.callRealMethod();
+            })
+        .when(outbox)
+        .save(any());
+
+    assertThrows(DataAccessResourceFailureException.class, () -> notifications.processPending(2));
+    var sends = inOrder(mail);
+    sends.verify(mail).send(eq("one@example.invalid"), any(), any());
+    sends.verify(mail).send(eq("two@example.invalid"), any(), any());
+    assertEquals(
+        OutboxStatus.SENT,
+        outbox
+            .findByEvent(eventId, NotificationEventType.ORDER_CONFIRMED)
+            .orElseThrow()
+            .getStatus());
+    assertEquals(
+        OutboxStatus.PENDING,
+        outbox
+            .findByEvent(secondEventId, NotificationEventType.ORDER_CONFIRMED)
+            .orElseThrow()
+            .getStatus());
+
+    doCallRealMethod().when(outbox).save(any());
+    assertEquals(1, notifications.processPending(2));
+    verify(mail, times(1)).send(eq("one@example.invalid"), any(), any());
+    verify(mail, times(2)).send(eq("two@example.invalid"), any(), any());
+    assertEquals(
+        OutboxStatus.SENT,
+        outbox
+            .findByEvent(secondEventId, NotificationEventType.ORDER_CONFIRMED)
+            .orElseThrow()
+            .getStatus());
   }
 
   private NotificationRequest request(String email) {

@@ -13,7 +13,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,13 +20,17 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import logistics.notifications.domain.NotificationOutboxEntry;
 import logistics.notifications.domain.NotificationOutboxRepository;
+import logistics.notifications.domain.OutboxStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class NotificationService implements NotificationRequestPort {
@@ -39,6 +42,7 @@ public class NotificationService implements NotificationRequestPort {
   private final MailSenderPort mailSender;
   private final OrderSnapshotPort orderSnapshotPort;
   private final Clock clock;
+  private final TransactionTemplate messageTransaction;
   private final int maxAttempts;
   private final long baseRetrySeconds;
 
@@ -48,6 +52,7 @@ public class NotificationService implements NotificationRequestPort {
       EmailTemplateRenderer templateRenderer,
       MailSenderPort mailSender,
       OrderSnapshotPort orderSnapshotPort,
+      PlatformTransactionManager transactionManager,
       @Value("${notifications.outbox.max-attempts:5}") int maxAttempts,
       @Value("${notifications.outbox.base-retry-seconds:5}") long baseRetrySeconds) {
     this(
@@ -55,6 +60,7 @@ public class NotificationService implements NotificationRequestPort {
         templateRenderer,
         mailSender,
         orderSnapshotPort,
+        transactionManager,
         Clock.systemUTC(),
         maxAttempts,
         baseRetrySeconds);
@@ -65,6 +71,7 @@ public class NotificationService implements NotificationRequestPort {
       EmailTemplateRenderer templateRenderer,
       MailSenderPort mailSender,
       OrderSnapshotPort orderSnapshotPort,
+      PlatformTransactionManager transactionManager,
       Clock clock,
       int maxAttempts,
       long baseRetrySeconds) {
@@ -73,6 +80,8 @@ public class NotificationService implements NotificationRequestPort {
     this.mailSender = mailSender;
     this.orderSnapshotPort = orderSnapshotPort;
     this.clock = clock;
+    this.messageTransaction = new TransactionTemplate(transactionManager);
+    this.messageTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     this.maxAttempts = maxAttempts;
     this.baseRetrySeconds = baseRetrySeconds;
   }
@@ -141,27 +150,45 @@ public class NotificationService implements NotificationRequestPort {
             new NotificationRequest(eventId, eventType, orderId, null, occurredAt), null, null));
   }
 
-  @Transactional
   public int processPending(int batchSize) {
-    List<NotificationOutboxEntry> due = outboxRepository.lockDuePending(clock.instant(), batchSize);
+    Instant cutoff = clock.instant();
     int sentCount = 0;
-
-    for (NotificationOutboxEntry entry : due) {
-      if (entry.getRecipientEmail() == null && !resolveRecipient(entry)) {
-        outboxRepository.save(entry);
-        continue;
+    for (int i = 0; i < Math.max(1, batchSize); i++) {
+      ProcessResult result = messageTransaction.execute(status -> processNext(cutoff));
+      if (result == ProcessResult.EMPTY) {
+        break;
       }
-      try {
-        mailSender.send(entry.getRecipientEmail(), entry.getSubject(), entry.getBody());
-        entry.markSent(clock.instant());
+      if (result == ProcessResult.SENT) {
         sentCount++;
-      } catch (Exception ex) {
-        recordFailure(entry, "SMTP delivery error");
       }
-      outboxRepository.save(entry);
     }
-
     return sentCount;
+  }
+
+  private enum ProcessResult {
+    EMPTY,
+    NOT_SENT,
+    SENT
+  }
+
+  private ProcessResult processNext(Instant cutoff) {
+    var due = outboxRepository.lockNextDuePending(cutoff);
+    if (due.isEmpty()) {
+      return ProcessResult.EMPTY;
+    }
+    NotificationOutboxEntry entry = due.get();
+    if (entry.getRecipientEmail() == null && !resolveRecipient(entry)) {
+      outboxRepository.save(entry);
+      return ProcessResult.NOT_SENT;
+    }
+    try {
+      mailSender.send(entry.getRecipientEmail(), entry.getSubject(), entry.getBody());
+      entry.markSent(clock.instant());
+    } catch (Exception ex) {
+      recordFailure(entry, "SMTP delivery error");
+    }
+    outboxRepository.save(entry);
+    return entry.getStatus() == OutboxStatus.SENT ? ProcessResult.SENT : ProcessResult.NOT_SENT;
   }
 
   private boolean resolveRecipient(NotificationOutboxEntry entry) {

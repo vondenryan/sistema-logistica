@@ -13,8 +13,8 @@ public interface NotificationOutboxRepository {
 
   void save(NotificationOutboxEntry entry);
 
-  // Locks selected rows for the lifetime of the caller's transaction.
-  List<NotificationOutboxEntry> lockDuePending(Instant now, int limit);
+  // Locks the selected row for the lifetime of the caller's transaction.
+  Optional<NotificationOutboxEntry> lockNextDuePending(Instant cutoff);
 
   List<NotificationOutboxEntry> findByOrderId(UUID orderId);
 }
