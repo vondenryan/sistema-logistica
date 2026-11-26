@@ -6,10 +6,18 @@ spring:
     password:
   flyway:
     enabled: true
-    schemas: deliveries
-    locations: classpath:db/migration/deliveries
+    schemas: deliveries,notifications,documents
+    locations: classpath:db/migration/deliveries,classpath:db/migration/notifications,classpath:db/migration/documents
     default-schema: deliveries
     create-schemas: true
+
+notifications:
+  smtp:
+    enabled: false
+    from: noreply@logistica-academica.invalid
+  outbox:
+    max-attempts: 3
+    base-retry-seconds: 5
 
 logging:
   level:

@@ -12,10 +12,24 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
-    schemas: deliveries
-    locations: classpath:db/migration/deliveries
+    schemas: deliveries,notifications,documents
+    locations: classpath:db/migration/deliveries,classpath:db/migration/notifications,classpath:db/migration/documents
     default-schema: deliveries
     create-schemas: true
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAILPIT_SMTP_PORT:1025}
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
+notifications:
+  smtp:
+    enabled: ${NOTIFICATIONS_SMTP_ENABLED:false}
+    from: ${NOTIFICATIONS_FROM:noreply@logistica-academica.invalid}
+  outbox:
+    max-attempts: 5
+    base-retry-seconds: 5
 
 logging:
   level:

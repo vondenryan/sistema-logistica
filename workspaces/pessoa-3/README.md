@@ -31,11 +31,12 @@ Na **Sprint 1 (Dias 1–2)**, o escopo implementado cobre:
    cp .env.example .env
    ```
 
-2. Suba o banco de dados PostgreSQL local isolado:
+2. Suba o banco de dados PostgreSQL e o servidor SMTP Mailpit locais:
    ```bash
    docker compose up -d
    ```
-   O PostgreSQL será iniciado na porta **5434**, com banco `logistics_p3` e credenciais `logistics`/`logistics`.
+   * PostgreSQL: porta **5434**, banco `logistics_p3` (`logistics`/`logistics`).
+   * Mailpit: SMTP na porta **1025** e interface Web em `http://localhost:8025`.
 
 ---
 
@@ -88,3 +89,6 @@ Validação em 24/11/2026: 68 testes backend e 6 frontend aprovados, além dos b
 | `PATCH` | `/api/v1/deliveries/{id}/status` | Atualiza status (`IN_TRANSIT`, `FAILED_ATTEMPT`, `ASSIGNED`) | DRIVER atribuído ou OPERATOR |
 | `POST` | `/api/v1/deliveries/{id}/complete` | Conclui entrega com nome do recebedor | DRIVER atribuído ou OPERATOR |
 | `GET` | `/api/v1/tracking/{code}` | Rastreamento público (`status` e `milestones`) | Público (rate limit por IP) |
+| `POST` | `/api/v1/documents` | Gera NF-e/CT-e simulados (`201` novo / `200` existente) | ADMIN, OPERATOR ou STORE própria |
+| `GET` | `/api/v1/documents/{documentId}` | Consulta metadados do documento simulado | ADMIN, OPERATOR ou STORE própria |
+| `GET` | `/api/v1/documents/{documentId}/pdf` | Retorna PDF acadêmico com marca d'água | ADMIN, OPERATOR ou STORE própria |

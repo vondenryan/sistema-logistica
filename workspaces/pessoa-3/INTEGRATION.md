@@ -2,17 +2,21 @@
 
 Este documento detalha as portas implementadas, consumidas e a estratégia de substituição de fakes para a integração na Sprint 4.
 
-## 1. Portas Produzidas (Módulo `deliveries`)
+## 1. Portas Produzidas (`deliveries`, `notifications`, `documents`)
 
-| Porta | Interface Java | Status na Sprint 1 | Substituição na Sprint 4 |
+| Porta | Interface Java | Status na Sprint 1–3 | Substituição na Sprint 4 |
 |---|---|---|---|
 | `DeliveryCommandPort` | `contracts.v1.DeliveryCommandPort` | Implementação real em `DeliveryService` | Mantida e exposta para chamadas diretas por Pessoa 1 (`orders` e `routing`) |
 | `DeliveryStatusPort` | `contracts.v1.DeliveryStatusPort` | Implementação real em `DeliveryService` | Mantida e exposta para consulta por Pessoa 1 |
+| `NotificationRequestPort` | `contracts.v1.NotificationRequestPort` | Implementação real em `NotificationService` (outbox persistente + Mailpit/fake SMTP) | Mantida e exposta para eventos de pedido da Pessoa 1 (`ORDER_CONFIRMED`) |
+| `DocumentRequestPort` | `contracts.v1.DocumentRequestPort` | Implementação real em `DocumentService` (PDF simulado com marca d'água acadêmica) | Mantida e conectada ao `OrderSnapshotPort` real |
 
 ### Operações Suportadas:
-- `ensureCreated(UUID orderId, UUID eventId)`: cria entrega em estado `PENDING` para pedido confirmado; operação idempotente por `orderId`.
-- `assignRoute(UUID orderId, UUID routeId, UUID eventId)`: associa entrega a uma rota válida (`ASSIGNED`); idempotente por rota.
-- `getByOrderId(UUID orderId)`: consulta snapshot da entrega.
+- `DeliveryCommandPort.ensureCreated(UUID orderId, UUID eventId)`: cria entrega em estado `PENDING` para pedido confirmado; operação idempotente por `orderId`.
+- `DeliveryCommandPort.assignRoute(UUID orderId, UUID routeId, UUID eventId)`: associa entrega a uma rota válida (`ASSIGNED`); idempotente por rota.
+- `DeliveryStatusPort.getByOrderId(UUID orderId)`: consulta snapshot da entrega.
+- `NotificationRequestPort.enqueue(NotificationRequest request)`: persiste notificação no outbox (`UNIQUE(event_id, event_type)`) com `accepted=true`; entrega assíncrona com retries exponenciais via SMTP (Mailpit local).
+- `DocumentRequestPort.ensureGenerated(DocumentRequest request)`: gera NF-e/CT-e simulados (`UNIQUE(order_id, document_type)`), exigindo frete cotado (`PRECONDITION_FAILED` se ausente).
 
 ---
 
@@ -34,6 +38,9 @@ Este documento detalha as portas implementadas, consumidas e a estratégia de su
 - `GET /api/v1/deliveries/{id}`: Detalhes da entrega com validação de escopo do ator.
 - `GET /api/v1/deliveries/{id}/events`: Histórico auditável e imutável de eventos da entrega.
 - `GET /api/v1/tracking/{code}`: Rastreamento público sem JWT com rate limit (`429 RATE_LIMITED`), expondo apenas `status` e `milestones`.
+- `POST /api/v1/documents`: Geração idempotente de documento simulado (`NFE_SIMULATED` ou `CTE_SIMULATED`), retornando `201` se novo ou `200` se já existente.
+- `GET /api/v1/documents/{documentId}`: Consulta metadados do documento simulado com validação de loja/ator.
+- `GET /api/v1/documents/{documentId}/pdf`: Download do PDF (`application/pdf`) com aviso **SIMULAÇÃO ACADÊMICA — SEM VALIDADE FISCAL**.
 
 
 ## IP de rastreamento e capacidade do limitador
