@@ -55,6 +55,52 @@ export interface SupplierPage {
   totalItems: number
 }
 
+export type FleetType = 'OWN' | 'THIRD_PARTY'
+
+export interface Carrier {
+  id: string
+  name: string
+  active: boolean
+}
+
+export interface Driver {
+  id: string
+  name: string
+  carrierId?: string
+  active: boolean
+}
+
+export interface Vehicle {
+  id: string
+  identifier: string
+  capacityKg: string
+  fleetType: FleetType
+  carrierId?: string
+  active: boolean
+}
+
+export interface FleetPage<T> {
+  items: T[]
+  page: number
+  size: number
+  totalItems: number
+}
+
+export interface FleetAssignment {
+  assignmentId: string
+  routeId: string
+  driverId: string
+  vehicleId: string
+  carrierId: string | null
+  fleetType: FleetType
+}
+
+export interface FleetAssignmentRequest {
+  routeId: string
+  originId: string
+  requiredCapacityKg: string
+}
+
 export interface ProblemDetail {
   code?: string
   detail?: string
@@ -202,6 +248,107 @@ export const api = {
       body: JSON.stringify(patch),
     })
   },
+
+  listCarriers(page: number, size: number): Promise<FleetPage<Carrier>> {
+    const query = new URLSearchParams({ page: String(page), size: String(size) })
+    return request<FleetPage<Carrier>>(`/api/v1/carriers?${query}`)
+  },
+
+  getCarrier(carrierId: string): Promise<Carrier> {
+    return request<Carrier>(`/api/v1/carriers/${encodeURIComponent(carrierId)}`)
+  },
+
+  createCarrier(carrier: Omit<Carrier, 'id'>): Promise<Carrier> {
+    return request<Carrier>('/api/v1/carriers', {
+      method: 'POST',
+      body: JSON.stringify(carrier),
+    })
+  },
+
+  patchCarrier(carrierId: string, patch: Partial<Omit<Carrier, 'id'>>): Promise<Carrier> {
+    return request<Carrier>(`/api/v1/carriers/${encodeURIComponent(carrierId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+  },
+
+  listDrivers(page: number, size: number): Promise<FleetPage<Driver>> {
+    const query = new URLSearchParams({ page: String(page), size: String(size) })
+    return request<FleetPage<Driver>>(`/api/v1/drivers?${query}`)
+  },
+
+  getDriver(driverId: string): Promise<Driver> {
+    return request<Driver>(`/api/v1/drivers/${encodeURIComponent(driverId)}`)
+  },
+
+  createDriver(driver: Omit<Driver, 'id'>): Promise<Driver> {
+    return request<Driver>('/api/v1/drivers', {
+      method: 'POST',
+      body: JSON.stringify(driver),
+    })
+  },
+
+  patchDriver(driverId: string, patch: Partial<Omit<Driver, 'id'>>): Promise<Driver> {
+    return request<Driver>(`/api/v1/drivers/${encodeURIComponent(driverId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+  },
+
+  listVehicles(page: number, size: number): Promise<FleetPage<Vehicle>> {
+    const query = new URLSearchParams({ page: String(page), size: String(size) })
+    return request<FleetPage<Vehicle>>(`/api/v1/vehicles?${query}`)
+  },
+
+  getVehicle(vehicleId: string): Promise<Vehicle> {
+    return request<Vehicle>(`/api/v1/vehicles/${encodeURIComponent(vehicleId)}`)
+  },
+
+  createVehicle(vehicle: Omit<Vehicle, 'id'>): Promise<Vehicle> {
+    return request<Vehicle>('/api/v1/vehicles', {
+      method: 'POST',
+      body: JSON.stringify(vehicle),
+    })
+  },
+
+  patchVehicle(vehicleId: string, patch: Partial<Omit<Vehicle, 'id'>>): Promise<Vehicle> {
+    return request<Vehicle>(`/api/v1/vehicles/${encodeURIComponent(vehicleId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+  },
+
+  getFleetAssignment(routeId: string): Promise<FleetAssignment> {
+    return request<FleetAssignment>(
+      `/api/v1/fleet/assignments/${encodeURIComponent(routeId)}`,
+    )
+  },
+
+  createFleetAssignment(assignment: FleetAssignmentRequest): Promise<FleetAssignment> {
+    return request<FleetAssignment>('/api/v1/fleet/assignments', {
+      method: 'POST',
+      body: JSON.stringify(assignment),
+    })
+  },
+}
+
+async function listAllFleetItems<T>(
+  loadPage: (page: number, size: number) => Promise<FleetPage<T>>,
+): Promise<T[]> {
+  const firstPage = await loadPage(0, 100)
+  const items = [...firstPage.items]
+  const pageCount = Math.ceil(firstPage.totalItems / firstPage.size)
+
+  for (let page = 1; page < pageCount; page += 1) {
+    const result = await loadPage(page, firstPage.size)
+    items.push(...result.items)
+  }
+
+  return items
+}
+
+export function listAllCarriers(): Promise<Carrier[]> {
+  return listAllFleetItems(api.listCarriers)
 }
 
 export async function listAllStores(): Promise<Store[]> {
