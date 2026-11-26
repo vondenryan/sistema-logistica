@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import TrackingView from '../src/TrackingView.vue'
 import DriverPanelView from '../src/DriverPanelView.vue'
+import DocumentsView from '../src/DocumentsView.vue'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -205,4 +206,57 @@ describe('DriverPanelView', () => {
     expect(wrapper.get('nav').text()).toContain('Página 2 de 2')
   })
 
+})
+
+describe('DocumentsView', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('displays academic watermark and generates simulated document PDF link', async () => {
+    const orderId = '44444444-4444-4444-8444-444444444444'
+    const documentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse(
+        {
+          documentId,
+          orderId,
+          documentType: 'CTE_SIMULATED',
+          status: 'GENERATED'
+        },
+        201
+      )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(DocumentsView)
+    expect(wrapper.text()).toContain('SIMULAÇÃO ACADÊMICA — SEM VALIDADE FISCAL')
+
+    await wrapper.find('input[aria-label="ID do Pedido"]').setValue(orderId)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(documentId)
+    const link = wrapper.find('a')
+    expect(link.attributes('href')).toBe(`/api/v1/documents/${documentId}/pdf`)
+  })
+
+  it('shows precondition error when freight is not quoted (422)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(
+        jsonResponse({ status: 422, code: 'PRECONDITION_FAILED', detail: 'Freight missing' }, 422)
+      )
+    )
+
+    const wrapper = mount(DocumentsView)
+    await wrapper
+      .find('input[aria-label="ID do Pedido"]')
+      .setValue('44444444-4444-4444-8444-444444444444')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('Frete ainda não cotado')
+  })
 })

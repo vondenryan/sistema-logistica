@@ -44,6 +44,15 @@ export interface PublicTrackingView {
   milestones: TrackingMilestone[]
 }
 
+export type DocumentType = 'NFE_SIMULATED' | 'CTE_SIMULATED'
+
+export interface DocumentReceipt {
+  documentId: string
+  orderId: string
+  documentType: DocumentType
+  status: 'GENERATED'
+}
+
 export interface ProblemDetail {
   type?: string
   title?: string
@@ -118,5 +127,21 @@ export const deliveriesApi = {
   async trackByCode(code: string): Promise<PublicTrackingView> {
     const res = await fetch(`/api/v1/tracking/${encodeURIComponent(code.trim())}`)
     return parseResponse<PublicTrackingView>(res)
+  },
+
+  async generateDocument(
+    orderId: string,
+    documentType: DocumentType
+  ): Promise<DocumentReceipt> {
+    const res = await fetch('/api/v1/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: orderId.trim(), documentType })
+    })
+    return parseResponse<DocumentReceipt>(res)
+  },
+
+  documentPdfUrl(documentId: string): string {
+    return `/api/v1/documents/${encodeURIComponent(documentId)}/pdf`
   }
 }

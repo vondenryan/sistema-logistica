@@ -7,6 +7,7 @@ import contracts.v1.DeliveryCommandPort;
 import contracts.v1.DeliverySnapshot;
 import contracts.v1.DeliveryStatus;
 import contracts.v1.DeliveryStatusPort;
+import contracts.v1.NotificationEventType;
 import contracts.v1.OrderSnapshot;
 import contracts.v1.OrderSnapshotPort;
 import contracts.v1.OrderStatus;
@@ -22,6 +23,8 @@ import logistics.deliveries.domain.Delivery;
 import logistics.deliveries.domain.DeliveryEvent;
 import logistics.deliveries.domain.DeliveryRepository;
 import logistics.fakes.FakeRouteSnapshotPort;
+import logistics.notifications.application.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,16 +34,28 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
   private final OrderSnapshotPort orderSnapshotPort;
   private final RouteSnapshotPort routeSnapshotPort;
   private final CurrentActorPort currentActorPort;
+  private final NotificationService notificationService;
 
   public DeliveryService(
       DeliveryRepository deliveryRepository,
       OrderSnapshotPort orderSnapshotPort,
       RouteSnapshotPort routeSnapshotPort,
       CurrentActorPort currentActorPort) {
+    this(deliveryRepository, orderSnapshotPort, routeSnapshotPort, currentActorPort, null);
+  }
+
+  @Autowired
+  public DeliveryService(
+      DeliveryRepository deliveryRepository,
+      OrderSnapshotPort orderSnapshotPort,
+      RouteSnapshotPort routeSnapshotPort,
+      CurrentActorPort currentActorPort,
+      NotificationService notificationService) {
     this.deliveryRepository = deliveryRepository;
     this.orderSnapshotPort = orderSnapshotPort;
     this.routeSnapshotPort = routeSnapshotPort;
     this.currentActorPort = currentActorPort;
+    this.notificationService = notificationService;
   }
 
   // --- DeliveryCommandPort Implementation ---
@@ -226,6 +241,22 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
             null);
     deliveryRepository.recordEvent(event);
 
+    if (notificationService != null && fromStatus != delivery.getStatus()) {
+      if (delivery.getStatus() == DeliveryStatus.IN_TRANSIT) {
+        notificationService.recordIntent(
+            NotificationEventType.DELIVERY_IN_TRANSIT,
+            delivery.getOrderId(),
+            event.id(),
+            event.occurredAt());
+      } else if (delivery.getStatus() == DeliveryStatus.FAILED_ATTEMPT) {
+        notificationService.recordIntent(
+            NotificationEventType.DELIVERY_FAILED_ATTEMPT,
+            delivery.getOrderId(),
+            event.id(),
+            event.occurredAt());
+      }
+    }
+
     return delivery.toSnapshot();
   }
 
@@ -258,6 +289,14 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
             null,
             receiverName.trim());
     deliveryRepository.recordEvent(event);
+
+    if (notificationService != null && fromStatus != DeliveryStatus.DELIVERED) {
+      notificationService.recordIntent(
+          NotificationEventType.DELIVERY_DELIVERED,
+          delivery.getOrderId(),
+          event.id(),
+          event.occurredAt());
+    }
 
     return delivery.toSnapshot();
   }
