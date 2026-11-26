@@ -70,18 +70,20 @@ public class JdbcSimulatedDocumentRepository implements SimulatedDocumentReposit
   }
 
   @Override
-  public void save(SimulatedDocument document) {
-    jdbcTemplate.update(
-        """
-        INSERT INTO documents.simulated_documents
-        (id, order_id, document_type, status, pdf_content, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """,
-        document.id(),
-        document.orderId(),
-        document.documentType().name(),
-        document.status().name(),
-        document.pdfContent(),
-        Timestamp.from(document.createdAt()));
+  public boolean insertIfAbsent(SimulatedDocument document) {
+    return jdbcTemplate.update(
+            """
+            INSERT INTO documents.simulated_documents
+            (id, order_id, document_type, status, pdf_content, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT DO NOTHING
+            """,
+            document.id(),
+            document.orderId(),
+            document.documentType().name(),
+            document.status().name(),
+            document.pdfContent(),
+            Timestamp.from(document.createdAt()))
+        == 1;
   }
 }

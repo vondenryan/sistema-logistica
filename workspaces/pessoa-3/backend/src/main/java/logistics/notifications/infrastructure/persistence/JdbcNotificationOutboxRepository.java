@@ -70,49 +70,54 @@ public class JdbcNotificationOutboxRepository implements NotificationOutboxRepos
 
   @Override
   public void save(NotificationOutboxEntry entry) {
-    int updated =
-        jdbcTemplate.update(
+    jdbcTemplate.update(
+        """
+        UPDATE notifications.notification_outbox
+        SET status = ?, attempts = ?, next_retry_at = ?, last_error = ?, updated_at = ?,
+            recipient_email = ?, payload_hash = ?
+        WHERE id = ?
+        """,
+        entry.getStatus().name(),
+        entry.getAttempts(),
+        Timestamp.from(entry.getNextRetryAt()),
+        entry.getLastError(),
+        Timestamp.from(entry.getUpdatedAt()),
+        entry.getRecipientEmail(),
+        entry.getPayloadHash(),
+        entry.getId());
+  }
+
+  @Override
+  public boolean insertIfAbsent(NotificationOutboxEntry entry) {
+    return jdbcTemplate.update(
             """
-            UPDATE notifications.notification_outbox
-            SET status = ?, attempts = ?, next_retry_at = ?, last_error = ?, updated_at = ?
-            WHERE id = ?
+            INSERT INTO notifications.notification_outbox
+            (id, event_id, event_type, order_id, recipient_email, subject, body,
+             payload_hash, status, attempts, next_retry_at, last_error,
+             occurred_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT DO NOTHING
             """,
+            entry.getId(),
+            entry.getEventId(),
+            entry.getEventType().name(),
+            entry.getOrderId(),
+            entry.getRecipientEmail(),
+            entry.getSubject(),
+            entry.getBody(),
+            entry.getPayloadHash(),
             entry.getStatus().name(),
             entry.getAttempts(),
             Timestamp.from(entry.getNextRetryAt()),
             entry.getLastError(),
-            Timestamp.from(entry.getUpdatedAt()),
-            entry.getId());
-
-    if (updated == 0) {
-      jdbcTemplate.update(
-          """
-          INSERT INTO notifications.notification_outbox
-          (id, event_id, event_type, order_id, recipient_email, subject, body,
-           payload_hash, status, attempts, next_retry_at, last_error,
-           occurred_at, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          """,
-          entry.getId(),
-          entry.getEventId(),
-          entry.getEventType().name(),
-          entry.getOrderId(),
-          entry.getRecipientEmail(),
-          entry.getSubject(),
-          entry.getBody(),
-          entry.getPayloadHash(),
-          entry.getStatus().name(),
-          entry.getAttempts(),
-          Timestamp.from(entry.getNextRetryAt()),
-          entry.getLastError(),
-          Timestamp.from(entry.getOccurredAt()),
-          Timestamp.from(entry.getCreatedAt()),
-          Timestamp.from(entry.getUpdatedAt()));
-    }
+            Timestamp.from(entry.getOccurredAt()),
+            Timestamp.from(entry.getCreatedAt()),
+            Timestamp.from(entry.getUpdatedAt()))
+        == 1;
   }
 
   @Override
-  public List<NotificationOutboxEntry> findDuePending(Instant now, int limit) {
+  public List<NotificationOutboxEntry> lockDuePending(Instant now, int limit) {
     return jdbcTemplate.query(
         """
         SELECT id, event_id, event_type, order_id, recipient_email, subject, body,
@@ -120,8 +125,9 @@ public class JdbcNotificationOutboxRepository implements NotificationOutboxRepos
                occurred_at, created_at, updated_at
         FROM notifications.notification_outbox
         WHERE status = 'PENDING' AND next_retry_at <= ?
-        ORDER BY next_retry_at ASC, created_at ASC
+        ORDER BY next_retry_at ASC, created_at ASC, id ASC
         LIMIT ?
+        FOR UPDATE SKIP LOCKED
         """,
         rowMapper,
         Timestamp.from(now),

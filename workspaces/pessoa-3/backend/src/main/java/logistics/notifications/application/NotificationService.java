@@ -32,8 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NotificationService implements NotificationRequestPort {
   private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
-  private static final Pattern EMAIL_PATTERN =
-      Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+  private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
   private final NotificationOutboxRepository outboxRepository;
   private final EmailTemplateRenderer templateRenderer;
@@ -92,99 +91,112 @@ public class NotificationService implements NotificationRequestPort {
     String normalizedTo = normalizeAndValidateEmail(request.to());
     String payloadHash = computeHash(request, normalizedTo);
 
-    Optional<NotificationOutboxEntry> existing;
     try {
-      existing = outboxRepository.findByEvent(request.eventId(), request.eventType());
-    } catch (DataAccessException ex) {
-      throw new ContractException("DEPENDENCY_UNAVAILABLE");
-    }
-
-    if (existing.isPresent()) {
-      NotificationOutboxEntry entry = existing.get();
-      if (!Objects.equals(entry.getPayloadHash(), payloadHash)) {
-        throw new ContractException("IDEMPOTENCY_CONFLICT");
+      Optional<NotificationOutboxEntry> existing =
+          outboxRepository.findByEvent(request.eventId(), request.eventType());
+      if (existing.isPresent()) {
+        return receiptFor(existing.get(), payloadHash);
       }
-      return new NotificationReceipt(entry.getId(), true);
-    }
-
-    EmailTemplateRenderer.RenderedEmail rendered =
-        templateRenderer.render(request.eventType(), request.orderId(), request.occurredAt());
-
-    NotificationOutboxEntry entry =
-        NotificationOutboxEntry.createPending(
-            request.eventId(),
-            request.eventType(),
-            request.orderId(),
-            normalizedTo,
-            rendered.subject(),
-            rendered.body(),
-            payloadHash,
-            request.occurredAt(),
-            clock.instant());
-
-    try {
-      outboxRepository.save(entry);
+      NotificationOutboxEntry entry = pendingEntry(request, normalizedTo, payloadHash);
+      if (outboxRepository.insertIfAbsent(entry)) {
+        return new NotificationReceipt(entry.getId(), true);
+      }
+      return receiptFor(
+          outboxRepository.findByEvent(request.eventId(), request.eventType()).orElseThrow(),
+          payloadHash);
     } catch (DataAccessException ex) {
       throw new ContractException("DEPENDENCY_UNAVAILABLE");
     }
+  }
 
+  private static NotificationReceipt receiptFor(NotificationOutboxEntry entry, String payloadHash) {
+    if (!Objects.equals(entry.getPayloadHash(), payloadHash)) {
+      throw new ContractException("IDEMPOTENCY_CONFLICT");
+    }
     return new NotificationReceipt(entry.getId(), true);
   }
 
-  /**
-   * Attempts to enqueue a notification for a delivery transition without failing the caller's
-   * transaction if the order has no email or if the outbox is temporarily unavailable.
-   */
-  public void enqueueIfEligible(
+  private NotificationOutboxEntry pendingEntry(
+      NotificationRequest request, String email, String payloadHash) {
+    var rendered =
+        templateRenderer.render(request.eventType(), request.orderId(), request.occurredAt());
+    return NotificationOutboxEntry.createPending(
+        request.eventId(),
+        request.eventType(),
+        request.orderId(),
+        email,
+        rendered.subject(),
+        rendered.body(),
+        payloadHash,
+        request.occurredAt(),
+        clock.instant());
+  }
+
+  /** Persists the intent in the same transaction as the delivery event. */
+  @Transactional
+  public void recordIntent(
       NotificationEventType eventType, UUID orderId, UUID eventId, Instant occurredAt) {
-    try {
-      OrderSnapshot order = orderSnapshotPort.getById(orderId);
-      if (order == null || order.recipientEmail() == null || order.recipientEmail().isBlank()) {
-        log.info(
-            "Notification {} skipped for order {}: recipient email not available",
-            eventType,
-            orderId);
-        return;
-      }
-      enqueue(
-          new NotificationRequest(
-              eventId != null ? eventId : UUID.randomUUID(),
-              eventType,
-              orderId,
-              order.recipientEmail(),
-              occurredAt != null ? occurredAt : clock.instant()));
-    } catch (Exception ex) {
-      log.warn(
-          "Could not enqueue notification {} for order {}: {}",
-          eventType,
-          orderId,
-          ex.getMessage());
-    }
+    outboxRepository.insertIfAbsent(
+        pendingEntry(
+            new NotificationRequest(eventId, eventType, orderId, null, occurredAt), null, null));
   }
 
   @Transactional
   public int processPending(int batchSize) {
-    Instant now = clock.instant();
-    List<NotificationOutboxEntry> due = outboxRepository.findDuePending(now, batchSize);
+    List<NotificationOutboxEntry> due = outboxRepository.lockDuePending(clock.instant(), batchSize);
     int sentCount = 0;
 
     for (NotificationOutboxEntry entry : due) {
+      if (entry.getRecipientEmail() == null && !resolveRecipient(entry)) {
+        outboxRepository.save(entry);
+        continue;
+      }
       try {
         mailSender.send(entry.getRecipientEmail(), entry.getSubject(), entry.getBody());
         entry.markSent(clock.instant());
         sentCount++;
       } catch (Exception ex) {
-        log.warn(
-            "Failed to send notification id={} attempt={}: {}",
-            entry.getId(),
-            entry.getAttempts() + 1,
-            ex.getMessage());
-        entry.recordFailure(ex.getMessage(), maxAttempts, baseRetrySeconds, clock.instant());
+        recordFailure(entry, "SMTP delivery error");
       }
       outboxRepository.save(entry);
     }
 
     return sentCount;
+  }
+
+  private boolean resolveRecipient(NotificationOutboxEntry entry) {
+    OrderSnapshot order;
+    try {
+      order = orderSnapshotPort.getById(entry.getOrderId());
+    } catch (RuntimeException ex) {
+      recordFailure(entry, "Order lookup failed");
+      return false;
+    }
+    if (order == null) {
+      recordFailure(entry, "Order lookup failed");
+      return false;
+    }
+    String email;
+    try {
+      email = normalizeAndValidateEmail(order.recipientEmail());
+    } catch (ContractException ex) {
+      entry.markSkipped(clock.instant());
+      return false;
+    }
+    var request =
+        new NotificationRequest(
+            entry.getEventId(),
+            entry.getEventType(),
+            entry.getOrderId(),
+            email,
+            entry.getOccurredAt());
+    entry.resolveRecipient(email, computeHash(request, email));
+    return true;
+  }
+
+  private void recordFailure(NotificationOutboxEntry entry, String reason) {
+    log.warn("Notification id={} attempt={}: {}", entry.getId(), entry.getAttempts() + 1, reason);
+    entry.recordFailure(reason, maxAttempts, baseRetrySeconds, clock.instant());
   }
 
   private static String normalizeAndValidateEmail(String email) {

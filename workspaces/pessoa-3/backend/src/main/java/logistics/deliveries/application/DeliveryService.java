@@ -243,13 +243,13 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
 
     if (notificationService != null && fromStatus != delivery.getStatus()) {
       if (delivery.getStatus() == DeliveryStatus.IN_TRANSIT) {
-        notificationService.enqueueIfEligible(
+        notificationService.recordIntent(
             NotificationEventType.DELIVERY_IN_TRANSIT,
             delivery.getOrderId(),
             event.id(),
             event.occurredAt());
       } else if (delivery.getStatus() == DeliveryStatus.FAILED_ATTEMPT) {
-        notificationService.enqueueIfEligible(
+        notificationService.recordIntent(
             NotificationEventType.DELIVERY_FAILED_ATTEMPT,
             delivery.getOrderId(),
             event.id(),
@@ -291,7 +291,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
     deliveryRepository.recordEvent(event);
 
     if (notificationService != null && fromStatus != DeliveryStatus.DELIVERED) {
-      notificationService.enqueueIfEligible(
+      notificationService.recordIntent(
           NotificationEventType.DELIVERY_DELIVERED,
           delivery.getOrderId(),
           event.id(),

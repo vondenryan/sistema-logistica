@@ -131,9 +131,14 @@ public class DocumentService implements DocumentRequestPort {
             DocumentStatus.GENERATED,
             pdfBytes,
             now);
-    documentRepository.save(created);
-
-    return new GenerateOutcome(created.toReceipt(), true);
+    if (documentRepository.insertIfAbsent(created)) {
+      return new GenerateOutcome(created.toReceipt(), true);
+    }
+    SimulatedDocument persisted =
+        documentRepository
+            .findByOrderAndType(request.orderId(), request.documentType())
+            .orElseThrow();
+    return new GenerateOutcome(persisted.toReceipt(), false);
   }
 
   private static void validateStoreScope(ActorContext actor, OrderSnapshot order) {

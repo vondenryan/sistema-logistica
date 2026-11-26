@@ -15,7 +15,9 @@ Este documento detalha as portas implementadas, consumidas e a estratégia de su
 - `DeliveryCommandPort.ensureCreated(UUID orderId, UUID eventId)`: cria entrega em estado `PENDING` para pedido confirmado; operação idempotente por `orderId`.
 - `DeliveryCommandPort.assignRoute(UUID orderId, UUID routeId, UUID eventId)`: associa entrega a uma rota válida (`ASSIGNED`); idempotente por rota.
 - `DeliveryStatusPort.getByOrderId(UUID orderId)`: consulta snapshot da entrega.
-- `NotificationRequestPort.enqueue(NotificationRequest request)`: persiste notificação no outbox (`UNIQUE(event_id, event_type)`) com `accepted=true`; entrega assíncrona com retries exponenciais via SMTP (Mailpit local).
+- `NotificationRequestPort.enqueue(NotificationRequest request)`: persiste a notificação com chave única `(event_id, event_type)`. Chamadas equivalentes retornam o mesmo ID e payloads divergentes recebem `IDEMPOTENCY_CONFLICT`.
+- Transições de entrega gravam a intenção no outbox na mesma transação que o evento. O processador consulta o pedido depois do commit e aplica novas tentativas com atraso exponencial se a consulta ou o SMTP falhar. Um pedido sem e-mail válido termina em `SKIPPED`.
+- O processador mantém um bloqueio de linha até registrar o resultado do envio. Uma interrupção entre o aceite pelo servidor SMTP e o commit do outbox pode levar a um novo envio.
 - `DocumentRequestPort.ensureGenerated(DocumentRequest request)`: gera NF-e/CT-e simulados (`UNIQUE(order_id, document_type)`), exigindo frete cotado (`PRECONDITION_FAILED` se ausente).
 
 ---

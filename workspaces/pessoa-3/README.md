@@ -42,8 +42,11 @@ Na **Sprint 1 (Dias 1–2)**, o escopo implementado cobre:
 
 ## 4. Executando a Aplicação
 
-Para iniciar o backend Spring Boot:
+Para iniciar o backend Spring Boot, carregue o `.env` a partir deste diretório. As variáveis `NOTIFICATIONS_SMTP_ENABLED=true` e `NOTIFICATIONS_OUTBOX_SCHEDULER_ENABLED=true` do exemplo ativam o SMTP e o envio automático pelo agendador.
 ```bash
+set -a
+. ./.env
+set +a
 cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```

@@ -1,6 +1,7 @@
 package logistics.notifications;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doThrow;
 
 import contracts.v1.AddressSnapshot;
 import contracts.v1.ContractException;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
@@ -38,7 +40,7 @@ class NotificationOutboxTest {
   @Autowired private NotificationOutboxRepository outboxRepository;
   @Autowired private InMemoryMailSender inMemoryMailSender;
   @Autowired private DeliveryService deliveryService;
-  @Autowired private FakeOrderSnapshotPort fakeOrders;
+  @MockitoSpyBean private FakeOrderSnapshotPort fakeOrders;
   @Autowired private FakeRouteSnapshotPort fakeRoutes;
   @Autowired private FakeCurrentActorPort fakeActor;
 
@@ -114,7 +116,9 @@ class NotificationOutboxTest {
     assertEquals(0, sentFirst);
 
     NotificationOutboxEntry entry =
-        outboxRepository.findByEvent(eventId, NotificationEventType.DELIVERY_IN_TRANSIT).orElseThrow();
+        outboxRepository
+            .findByEvent(eventId, NotificationEventType.DELIVERY_IN_TRANSIT)
+            .orElseThrow();
     assertEquals(OutboxStatus.PENDING, entry.getStatus());
     assertEquals(1, entry.getAttempts());
     assertNotNull(entry.getLastError());
@@ -143,7 +147,9 @@ class NotificationOutboxTest {
     assertEquals(1, sentRetry);
 
     NotificationOutboxEntry completed =
-        outboxRepository.findByEvent(eventId, NotificationEventType.DELIVERY_IN_TRANSIT).orElseThrow();
+        outboxRepository
+            .findByEvent(eventId, NotificationEventType.DELIVERY_IN_TRANSIT)
+            .orElseThrow();
     assertEquals(OutboxStatus.SENT, completed.getStatus());
     assertEquals(1, inMemoryMailSender.getSentMessages().size());
     assertEquals("Entrega em trânsito", inMemoryMailSender.getSentMessages().get(0).subject());
@@ -155,8 +161,7 @@ class NotificationOutboxTest {
 
     fakeActor.asOperator();
     DeliverySnapshot created =
-        deliveryService.ensureCreated(
-            FakeOrderSnapshotPort.CANONICAL_ORDER_ID, UUID.randomUUID());
+        deliveryService.ensureCreated(FakeOrderSnapshotPort.CANONICAL_ORDER_ID, UUID.randomUUID());
     deliveryService.assignRoute(
         FakeOrderSnapshotPort.CANONICAL_ORDER_ID,
         FakeRouteSnapshotPort.CANONICAL_ROUTE_ID,
@@ -180,7 +185,14 @@ class NotificationOutboxTest {
     UUID noEmailOrderId = UUID.randomUUID();
     AddressSnapshot addr =
         new AddressSnapshot(
-            "Rua Sem Email, 1", null, "Cidade", "SC", "00000-000", "BR", BigDecimal.ZERO, BigDecimal.ZERO);
+            "Rua Sem Email, 1",
+            null,
+            "Cidade",
+            "SC",
+            "00000-000",
+            "BR",
+            BigDecimal.ZERO,
+            BigDecimal.ZERO);
     fakeOrders.register(
         new OrderSnapshot(
             noEmailOrderId,
@@ -200,11 +212,65 @@ class NotificationOutboxTest {
     DeliverySnapshot noEmailDelivery =
         deliveryService.ensureCreated(noEmailOrderId, UUID.randomUUID());
     assertEquals(DeliveryStatus.PENDING, noEmailDelivery.status());
-    notificationService.enqueueIfEligible(
-        NotificationEventType.ORDER_CONFIRMED,
-        noEmailOrderId,
-        UUID.randomUUID(),
-        Instant.now());
-    assertTrue(outboxRepository.findByOrderId(noEmailOrderId).isEmpty());
+    notificationService.recordIntent(
+        NotificationEventType.ORDER_CONFIRMED, noEmailOrderId, UUID.randomUUID(), Instant.now());
+    notificationService.processPending(10);
+    assertEquals(
+        OutboxStatus.SKIPPED,
+        outboxRepository.findByOrderId(noEmailOrderId).getFirst().getStatus());
+    assertTrue(inMemoryMailSender.getSentMessages().isEmpty());
+  }
+
+  @Test
+  void transitionPersistsIntentWhenOrderLookupFailsAndLaterSendsIt() {
+    UUID orderId = FakeOrderSnapshotPort.CANONICAL_ORDER_ID;
+    fakeActor.asOperator();
+    var created = deliveryService.ensureCreated(orderId, UUID.randomUUID());
+    deliveryService.assignRoute(
+        orderId, FakeRouteSnapshotPort.CANONICAL_ROUTE_ID, UUID.randomUUID());
+    var order = fakeOrders.getById(orderId);
+    doThrow(new ContractException("DEPENDENCY_UNAVAILABLE"))
+        .doReturn(order)
+        .when(fakeOrders)
+        .getById(orderId);
+
+    assertEquals(
+        DeliveryStatus.IN_TRANSIT,
+        deliveryService.updateStatus(created.deliveryId(), "IN_TRANSIT", null).status());
+    var pending = outboxRepository.findByOrderId(orderId).getFirst();
+    var deliveryEvent = deliveryService.getEvents(created.deliveryId()).getLast();
+    assertEquals(deliveryEvent.id(), pending.getEventId());
+    assertNull(pending.getRecipientEmail());
+
+    assertEquals(0, notificationService.processPending(10));
+    var retry = outboxRepository.findByOrderId(orderId).getFirst();
+    assertEquals(OutboxStatus.PENDING, retry.getStatus());
+    assertEquals(1, retry.getAttempts());
+    assertTrue(inMemoryMailSender.getSentMessages().isEmpty());
+    assertEquals(0, notificationService.processPending(10));
+
+    // Move only the persisted retry time forward without sleeping.
+    outboxRepository.save(
+        new NotificationOutboxEntry(
+            retry.getId(),
+            retry.getEventId(),
+            retry.getEventType(),
+            retry.getOrderId(),
+            retry.getRecipientEmail(),
+            retry.getSubject(),
+            retry.getBody(),
+            retry.getPayloadHash(),
+            retry.getStatus(),
+            retry.getAttempts(),
+            Instant.now().minusSeconds(1),
+            retry.getLastError(),
+            retry.getOccurredAt(),
+            retry.getCreatedAt(),
+            retry.getUpdatedAt()));
+    assertEquals(1, notificationService.processPending(10));
+    var sent = outboxRepository.findByOrderId(orderId).getFirst();
+    assertEquals(pending.getId(), sent.getId());
+    assertEquals(OutboxStatus.SENT, sent.getStatus());
+    assertEquals(1, inMemoryMailSender.getSentMessages().size());
   }
 }

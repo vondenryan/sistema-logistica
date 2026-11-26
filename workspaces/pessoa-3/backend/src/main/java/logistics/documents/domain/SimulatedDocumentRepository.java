@@ -9,5 +9,5 @@ public interface SimulatedDocumentRepository {
 
   Optional<SimulatedDocument> findByOrderAndType(UUID orderId, DocumentType documentType);
 
-  void save(SimulatedDocument document);
+  boolean insertIfAbsent(SimulatedDocument document);
 }

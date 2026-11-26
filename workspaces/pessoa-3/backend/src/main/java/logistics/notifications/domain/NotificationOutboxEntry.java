@@ -10,10 +10,10 @@ public class NotificationOutboxEntry {
   private final UUID eventId;
   private final NotificationEventType eventType;
   private final UUID orderId;
-  private final String recipientEmail;
+  private String recipientEmail;
   private final String subject;
   private final String body;
-  private final String payloadHash;
+  private String payloadHash;
   private OutboxStatus status;
   private int attempts;
   private Instant nextRetryAt;
@@ -42,10 +42,10 @@ public class NotificationOutboxEntry {
     this.eventId = Objects.requireNonNull(eventId);
     this.eventType = Objects.requireNonNull(eventType);
     this.orderId = Objects.requireNonNull(orderId);
-    this.recipientEmail = Objects.requireNonNull(recipientEmail);
+    this.recipientEmail = recipientEmail;
     this.subject = Objects.requireNonNull(subject);
     this.body = Objects.requireNonNull(body);
-    this.payloadHash = Objects.requireNonNull(payloadHash);
+    this.payloadHash = payloadHash;
     this.status = Objects.requireNonNull(status);
     this.attempts = attempts;
     this.nextRetryAt = Objects.requireNonNull(nextRetryAt);
@@ -81,6 +81,18 @@ public class NotificationOutboxEntry {
         occurredAt,
         now,
         now);
+  }
+
+  public void resolveRecipient(String email, String hash) {
+    this.recipientEmail = Objects.requireNonNull(email);
+    this.payloadHash = Objects.requireNonNull(hash);
+    this.attempts = 0;
+  }
+
+  public void markSkipped(Instant now) {
+    this.status = OutboxStatus.SKIPPED;
+    this.lastError = null;
+    this.updatedAt = now;
   }
 
   public void markSent(Instant now) {

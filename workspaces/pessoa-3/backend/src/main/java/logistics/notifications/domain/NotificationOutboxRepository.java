@@ -9,9 +9,12 @@ import java.util.UUID;
 public interface NotificationOutboxRepository {
   Optional<NotificationOutboxEntry> findByEvent(UUID eventId, NotificationEventType eventType);
 
+  boolean insertIfAbsent(NotificationOutboxEntry entry);
+
   void save(NotificationOutboxEntry entry);
 
-  List<NotificationOutboxEntry> findDuePending(Instant now, int limit);
+  // Locks selected rows for the lifetime of the caller's transaction.
+  List<NotificationOutboxEntry> lockDuePending(Instant now, int limit);
 
   List<NotificationOutboxEntry> findByOrderId(UUID orderId);
 }
