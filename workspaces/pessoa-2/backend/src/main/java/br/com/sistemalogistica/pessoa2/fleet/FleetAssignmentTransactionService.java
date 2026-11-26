@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
 import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentSnapshot;
 import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
-import br.com.sistemalogistica.pessoa2.contracts.v1.PartnerLookupPort;
+import contracts.v1.PartnerLookupPort;
 import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReason;
 import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReceipt;
 import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseRequest;

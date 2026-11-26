@@ -41,7 +41,7 @@ O fake `CurrentActorPort` está disponível somente no perfil `dev`. Fora desse 
 
 ## Contratos compartilhados
 
-O pacote Java `br.com.sistemalogistica.pessoa2.contracts.v1` no backend é uma cópia local provisória dos contratos compartilhados, incluindo `PartnerLookupPort` e seus snapshots. Ele permanece no workspace até o módulo compartilhado ser congelado; não há uma pasta `contracts/v1/` na raiz do repositório.
+`PartnerLookupPort` e seus snapshots usam o pacote Java compartilhado `contracts.v1`, compatível com os demais workspaces; as coordenadas do snapshot são `BigDecimal`. Os contratos próprios da Pessoa 2 permanecem em `br.com.sistemalogistica.pessoa2.contracts.v1`. Não há uma pasta compartilhada `contracts/v1/` na raiz do repositório.
 
 ## Cadastro de origens
 

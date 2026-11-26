@@ -143,6 +143,6 @@ public class StoreService {
 		return new ContractException(
 				"CONFLICT",
 				"A store with this name already exists.",
-				List.of(Map.of("field", "name", "message", "Must be unique.")));
+				List.of(Map.of("field", "name", "reason", "MUST_BE_UNIQUE")));
 	}
 }

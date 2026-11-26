@@ -17,14 +17,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AddressSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.OriginSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.PartnerLookupPort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.StoreSnapshot;
+import contracts.v1.AddressSnapshot;
+import contracts.v1.ContractException;
+import contracts.v1.OriginSnapshot;
+import contracts.v1.PartnerLookupPort;
+import contracts.v1.StoreSnapshot;
 import br.com.sistemalogistica.pessoa2.origins.CreateOriginRequest;
 import br.com.sistemalogistica.pessoa2.origins.OriginService;
 import br.com.sistemalogistica.pessoa2.origins.OriginType;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 import br.com.sistemalogistica.pessoa2.stores.CreateStoreRequest;
 import br.com.sistemalogistica.pessoa2.stores.StoreService;
 
@@ -35,9 +35,24 @@ class PartnerLookupPortContractTests {
 
 	private static final br.com.sistemalogistica.pessoa2.origins.AddressSnapshot ORIGIN_ADDRESS =
 			new br.com.sistemalogistica.pessoa2.origins.AddressSnapshot(
-					"Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", -26.48, -49.07);
+					"Rua Exemplo, 100",
+					null,
+					"Cidade Fictícia",
+					"SC",
+					"00000-000",
+					"BR",
+					-26.48,
+					-49.07);
 	private static final AddressSnapshot CONTRACT_ADDRESS =
-			new AddressSnapshot("Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", -26.48, -49.07);
+			new AddressSnapshot(
+					"Rua Exemplo, 100",
+					null,
+					"Cidade Fictícia",
+					"SC",
+					"00000-000",
+					"BR",
+					new java.math.BigDecimal("-26.48"),
+					new java.math.BigDecimal("-49.07"));
 
 	@Autowired
 	private PartnerLookupPort partnerLookupPort;
@@ -59,11 +74,13 @@ class PartnerLookupPortContractTests {
 
 		assertEquals(new OriginSnapshot(
 				origin.id(),
-				br.com.sistemalogistica.pessoa2.contracts.v1.OriginType.DISTRIBUTION_CENTER,
+				contracts.v1.OriginType.DISTRIBUTION_CENTER,
 				store.id(),
 				CONTRACT_ADDRESS,
 				true), originSnapshot);
 		assertEquals(new StoreSnapshot(store.id(), true, store.name()), storeSnapshot);
+		assertEquals(store.id(), originSnapshot.storeId());
+		assertEquals(originSnapshot.storeId(), storeSnapshot.id());
 		assertDoesNotExposeJpaEntities(originSnapshot);
 		assertDoesNotExposeJpaEntities(storeSnapshot);
 	}
@@ -74,8 +91,10 @@ class PartnerLookupPortContractTests {
 		var origin = originService.create(
 				new CreateOriginRequest(OriginType.STORE, store.id(), ORIGIN_ADDRESS, false));
 
-		assertFalse(partnerLookupPort.getOrigin(origin.id()).active());
+		OriginSnapshot originSnapshot = partnerLookupPort.getOrigin(origin.id());
+		assertFalse(originSnapshot.active());
 		assertFalse(partnerLookupPort.getStore(store.id()).active());
+		assertEquals(store.id(), originSnapshot.storeId());
 	}
 
 	@Test
@@ -85,8 +104,8 @@ class PartnerLookupPortContractTests {
 		ContractException storeException =
 				assertThrows(ContractException.class, () -> partnerLookupPort.getStore(UUID.randomUUID()));
 
-		assertEquals("NOT_FOUND", originException.getCode());
-		assertEquals("NOT_FOUND", storeException.getCode());
+		assertEquals("NOT_FOUND", originException.code());
+		assertEquals("NOT_FOUND", storeException.code());
 	}
 
 	@Test
@@ -97,7 +116,7 @@ class PartnerLookupPortContractTests {
 		assertArrayEquals(
 				new Class<?>[] {
 					UUID.class,
-					br.com.sistemalogistica.pessoa2.contracts.v1.OriginType.class,
+					contracts.v1.OriginType.class,
 					UUID.class,
 					AddressSnapshot.class,
 					boolean.class
@@ -109,7 +128,7 @@ class PartnerLookupPortContractTests {
 		assertArrayEquals(
 				new Class<?>[] {
 					String.class, String.class, String.class, String.class, String.class, String.class,
-					Double.class, Double.class
+					java.math.BigDecimal.class, java.math.BigDecimal.class
 				},
 				componentTypes(AddressSnapshot.class));
 		assertArrayEquals(new String[] {"id", "active", "name"}, componentNames(StoreSnapshot.class));

@@ -1,4 +1,6 @@
-package br.com.sistemalogistica.pessoa2.contracts.v1;
+package contracts.v1;
+
+import java.math.BigDecimal;
 
 public record AddressSnapshot(
 		String line1,
@@ -7,6 +9,6 @@ public record AddressSnapshot(
 		String state,
 		String postalCode,
 		String country,
-		Double latitude,
-		Double longitude) {
+		BigDecimal latitude,
+		BigDecimal longitude) {
 }

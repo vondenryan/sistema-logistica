@@ -42,7 +42,7 @@ public class ContractProblemHandler {
 				HttpStatus.BAD_REQUEST,
 				"VALIDATION_ERROR",
 				"Request validation failed.",
-				List.of(Map.of("field", "request", "message", "A request parameter is invalid.")));
+				List.of(Map.of("field", "request", "reason", "INVALID_PARAMETER")));
 	}
 
 	@ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
@@ -51,13 +51,28 @@ public class ContractProblemHandler {
 				HttpStatus.BAD_REQUEST,
 				"VALIDATION_ERROR",
 				"Request body or path parameter is invalid.",
-				List.of(Map.of("field", "request", "message", "The request could not be parsed.")));
+				List.of(Map.of("field", "request", "reason", "MALFORMED_REQUEST")));
 	}
 
 	private Map<String, Object> fieldDetail(FieldError error) {
 		return Map.of(
 				"field", error.getField(),
-				"message", error.getDefaultMessage() == null ? "Invalid value." : error.getDefaultMessage());
+				"reason", reasonFor(error.getCode()));
+	}
+
+	private String reasonFor(String code) {
+		if (code == null) {
+			return "INVALID_VALUE";
+		}
+		return switch (code) {
+			case "DecimalMax", "DecimalMin", "Max", "Min" -> "MUST_BE_IN_RANGE";
+			case "Email" -> "MUST_BE_VALID";
+			case "NotBlank" -> "MUST_NOT_BE_BLANK";
+			case "NotNull" -> "MUST_NOT_BE_NULL";
+			case "Pattern" -> "MUST_MATCH_PATTERN";
+			case "Size" -> "MUST_BE_WITHIN_LIMITS";
+			default -> "INVALID_VALUE";
+		};
 	}
 
 	private ResponseEntity<ProblemDetail> problem(

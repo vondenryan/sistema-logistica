@@ -44,10 +44,18 @@ class ContractTests(unittest.TestCase):
                 mutate(data)
                 self.assertTrue(list(validator('create-order').iter_errors(data)))
 
-    def test_error_requires_details_array(self):
+    def test_error_details_require_field_and_reason(self):
         data = fixture('problem')
         data['details'] = {}
         self.assertTrue(list(validator('problem').iter_errors(data)))
+        data['details'] = [{'field': 'requiredCapacityKg', 'message': 'Must be positive.'}]
+        self.assertTrue(list(validator('problem').iter_errors(data)))
+        data['details'] = [
+            {'field': 'requiredCapacityKg', 'reason': 'MUST_BE_POSITIVE', 'message': 'Must be positive.'}
+        ]
+        self.assertTrue(list(validator('problem').iter_errors(data)))
+        data['details'] = [{'field': 'requiredCapacityKg', 'reason': 'MUST_BE_POSITIVE'}]
+        validator('problem').validate(data)
 
     def test_origin_requires_store_even_distribution_center(self):
         data = fixture('origin')

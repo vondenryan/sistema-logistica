@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -91,9 +92,38 @@ class OriginControllerContractTests {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-				.andExpect(jsonPath("$.details").isArray());
+				.andExpect(jsonPath("$.details[*].field", hasItem("address.line1")))
+				.andExpect(jsonPath("$.details[*].reason").isArray())
+				.andExpect(jsonPath("$.details[*].message").doesNotExist());
 
 		verify(service, never()).create(any(CreateOriginRequest.class));
+	}
+
+	@Test
+	void rejectsOutOfRangeCoordinatesOnCreateAndPatch() throws Exception {
+		UUID storeId = UUID.randomUUID();
+		String invalidLatitude = VALID_ADDRESS.replace("\"latitude\":-26.48", "\"latitude\":91.0");
+		mockMvc.perform(post("/api/v1/origins")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"type\":\"STORE\",\"storeId\":\"" + storeId
+								+ "\",\"address\":" + invalidLatitude + ",\"active\":true}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+				.andExpect(jsonPath("$.details[0].field").value("address.latitude"))
+				.andExpect(jsonPath("$.details[0].reason").value("MUST_BE_IN_RANGE"));
+
+		UUID originId = UUID.randomUUID();
+		String invalidLongitude = VALID_ADDRESS.replace("\"longitude\":-49.07", "\"longitude\":-181.0");
+		mockMvc.perform(patch("/api/v1/origins/{originId}", originId)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"address\":" + invalidLongitude + "}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+				.andExpect(jsonPath("$.details[0].field").value("address.longitude"))
+				.andExpect(jsonPath("$.details[0].reason").value("MUST_BE_IN_RANGE"));
+
+		verify(service, never()).create(any(CreateOriginRequest.class));
+		verify(service, never()).patch(org.mockito.ArgumentMatchers.eq(originId), any(PatchOriginRequest.class));
 	}
 
 	@Test

@@ -1,15 +1,16 @@
 package br.com.sistemalogistica.pessoa2.partners;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AddressSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.OriginSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.OriginType;
-import br.com.sistemalogistica.pessoa2.contracts.v1.PartnerLookupPort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.StoreSnapshot;
+import contracts.v1.AddressSnapshot;
+import contracts.v1.OriginSnapshot;
+import contracts.v1.OriginType;
+import contracts.v1.PartnerLookupPort;
+import contracts.v1.StoreSnapshot;
 import br.com.sistemalogistica.pessoa2.origins.Origin;
 import br.com.sistemalogistica.pessoa2.origins.OriginRepository;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
@@ -45,8 +46,8 @@ public class PartnerLookupAdapter implements PartnerLookupPort {
 						address.state(),
 						address.postalCode(),
 						address.country(),
-						address.latitude(),
-						address.longitude()),
+						BigDecimal.valueOf(address.latitude()),
+						BigDecimal.valueOf(address.longitude())),
 				origin.isActive());
 	}
 

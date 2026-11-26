@@ -12,6 +12,20 @@ jobs:
     name: CI Global
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pessoa2_db
+          POSTGRES_USER: pessoa2_user
+          POSTGRES_PASSWORD: pessoa2_local_only
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U pessoa2_user -d pessoa2_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v6
         with:

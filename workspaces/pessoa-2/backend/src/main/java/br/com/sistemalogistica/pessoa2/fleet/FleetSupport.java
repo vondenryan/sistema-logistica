@@ -82,6 +82,6 @@ final class FleetSupport {
 		return new ContractException(
 				"CONFLICT",
 				message,
-				List.of(Map.of("field", field, "message", "Must be unique.")));
+				List.of(Map.of("field", field, "reason", "MUST_BE_UNIQUE")));
 	}
 }
