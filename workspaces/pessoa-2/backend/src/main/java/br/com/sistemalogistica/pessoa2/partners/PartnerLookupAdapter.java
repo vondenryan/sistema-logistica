@@ -13,7 +13,7 @@ import contracts.v1.PartnerLookupPort;
 import contracts.v1.StoreSnapshot;
 import br.com.sistemalogistica.pessoa2.origins.Origin;
 import br.com.sistemalogistica.pessoa2.origins.OriginRepository;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ContractException;
 import br.com.sistemalogistica.pessoa2.stores.Store;
 import br.com.sistemalogistica.pessoa2.stores.StoreRepository;
 
@@ -31,8 +31,11 @@ public class PartnerLookupAdapter implements PartnerLookupPort {
 	@Override
 	@Transactional(readOnly = true)
 	public OriginSnapshot getOrigin(UUID originId) {
+		if (originId == null) {
+			throw new ContractException("VALIDATION_ERROR");
+		}
 		Origin origin = originRepository.findById(originId)
-				.orElseThrow(() -> new ContractException("NOT_FOUND", "Origin was not found."));
+				.orElseThrow(() -> new ContractException("NOT_FOUND"));
 		br.com.sistemalogistica.pessoa2.origins.AddressSnapshot address = origin.getAddress();
 
 		return new OriginSnapshot(
@@ -54,8 +57,11 @@ public class PartnerLookupAdapter implements PartnerLookupPort {
 	@Override
 	@Transactional(readOnly = true)
 	public StoreSnapshot getStore(UUID storeId) {
+		if (storeId == null) {
+			throw new ContractException("VALIDATION_ERROR");
+		}
 		Store store = storeRepository.findById(storeId)
-				.orElseThrow(() -> new ContractException("NOT_FOUND", "Store was not found."));
+				.orElseThrow(() -> new ContractException("NOT_FOUND"));
 		return new StoreSnapshot(store.getId(), store.isActive(), store.getName());
 	}
 

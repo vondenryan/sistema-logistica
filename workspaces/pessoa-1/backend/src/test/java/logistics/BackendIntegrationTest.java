@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import contracts.v1.ContractException;
 import com.fasterxml.jackson.databind.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,31 @@ class BackendIntegrationTest {
     return """
     {"storeId":"22222222-2222-4222-8222-222222222222","originId":"11111111-1111-4111-8111-111111111111","destination":{"line1":"Rua Destino","line2":null,"city":"Cidade","state":"SC","postalCode":"00000-000","country":"BR","latitude":-26.49,"longitude":-49.08},"recipientName":"Cliente","recipientEmail":"client@example.invalid","items":[{"description":"Produto","quantity":2,"unitWeightKg":"20.000"}]}
     """;
+  }
+
+  @Test
+  void partnerLookupFixtureMatchesV1OriginAndStoreBehavior() {
+    var activeOrigin = fixtures.getOrigin(
+        java.util.UUID.fromString("11111111-1111-4111-8111-111111111111"));
+    assertThat(activeOrigin.active()).isTrue();
+    assertThat(fixtures.getStore(activeOrigin.storeId()).id()).isEqualTo(activeOrigin.storeId());
+
+    var inactiveOrigin = fixtures.getOrigin(
+        java.util.UUID.fromString("11111111-1111-4111-8111-111111111113"));
+    assertThat(inactiveOrigin.active()).isFalse();
+    assertThat(inactiveOrigin.storeId()).isEqualTo(activeOrigin.storeId());
+
+    var linkedOrigin = fixtures.getOrigin(
+        java.util.UUID.fromString("11111111-1111-4111-8111-111111111112"));
+    assertThat(linkedOrigin.active()).isTrue();
+    assertThat(fixtures.getStore(linkedOrigin.storeId()).id()).isEqualTo(linkedOrigin.storeId());
+
+    assertThatThrownBy(() -> fixtures.getOrigin(java.util.UUID.randomUUID()))
+        .isInstanceOfSatisfying(
+            ContractException.class, exception -> assertThat(exception.code()).isEqualTo("NOT_FOUND"));
+    assertThatThrownBy(() -> fixtures.getStore(java.util.UUID.randomUUID()))
+        .isInstanceOfSatisfying(
+            ContractException.class, exception -> assertThat(exception.code()).isEqualTo("NOT_FOUND"));
   }
 
   @Test

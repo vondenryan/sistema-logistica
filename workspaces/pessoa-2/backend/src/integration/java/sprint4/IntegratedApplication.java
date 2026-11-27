@@ -1,18 +1,13 @@
 package sprint4;
 
 import br.com.sistemalogistica.pessoa2.Pessoa2BackendApplication;
-import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentService;
 import br.com.sistemalogistica.pessoa2.fleet.RouteCapacityValidator;
-import br.com.sistemalogistica.pessoa2.partners.PartnerLookupAdapter;
 import contracts.v1.ContractException;
 import contracts.v1.CurrentActorPort;
 import contracts.v1.OrderSnapshot;
 import contracts.v1.OrderSnapshotPort;
 import contracts.v1.OrderStatus;
-import contracts.v1.OriginSnapshot;
-import contracts.v1.PartnerLookupPort;
 import contracts.v1.RouteSnapshotPort;
-import contracts.v1.StoreSnapshot;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -101,22 +96,6 @@ public class IntegratedApplication {
     }
 
     @Bean
-    @Primary
-    PartnerLookupPort partnerLookup(PartnerLookupAdapter partners) {
-        return new PartnerLookupPort() {
-            @Override
-            public OriginSnapshot getOrigin(UUID id) {
-                return IntegratedPorts.call(() -> partners.getOrigin(id));
-            }
-
-            @Override
-            public StoreSnapshot getStore(UUID id) {
-                return IntegratedPorts.call(() -> partners.getStore(id));
-            }
-        };
-    }
-
-    @Bean
     RouteCapacityValidator confirmedOrderCapacity(OrderSnapshotPort orders) {
         return (route, requestedCapacity) -> {
             BigDecimal totalCapacity = BigDecimal.ZERO;
@@ -135,8 +114,7 @@ public class IntegratedApplication {
     }
 
     @Bean
-    IntegratedPorts integratedPorts(CurrentActorPort actor, RouteSnapshotPort routes,
-            ObjectProvider<FleetAssignmentService> fleet) {
-        return new IntegratedPorts(actor, routes, fleet);
+    IntegratedPorts integratedPorts(CurrentActorPort actor) {
+        return new IntegratedPorts(actor);
     }
 }

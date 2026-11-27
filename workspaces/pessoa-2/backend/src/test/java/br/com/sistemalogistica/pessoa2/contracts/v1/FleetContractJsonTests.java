@@ -9,22 +9,28 @@ import static org.mockito.Mockito.when;
 
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.util.UUID;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import contracts.v1.AddressSnapshot;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.AssignmentSnapshot;
+import contracts.v1.FleetAssignmentPort;
+import contracts.v1.FleetType;
 import contracts.v1.OriginSnapshot;
 import contracts.v1.OriginType;
 import contracts.v1.StoreSnapshot;
 import contracts.v1.PartnerLookupPort;
 import br.com.sistemalogistica.pessoa2.fleet.DevFleetAssignmentRequest;
+import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
 import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentRepository;
 import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentService;
 import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentTransactionService;
+import br.com.sistemalogistica.pessoa2.fleet.FleetReleaseEventRepository;
 import br.com.sistemalogistica.pessoa2.origins.OriginRepository;
 import br.com.sistemalogistica.pessoa2.security.CurrentActorPort;
 import br.com.sistemalogistica.pessoa2.stores.StoreRepository;
@@ -79,6 +85,7 @@ class FleetContractJsonTests {
 	@Test
 	void fleetAssignmentPortSerializesItsResponseToV1Fixture() throws Exception {
 		FleetAssignmentRepository assignmentRepository = mock(FleetAssignmentRepository.class);
+		FleetReleaseEventRepository releaseEventRepository = mock(FleetReleaseEventRepository.class);
 		FleetAssignmentTransactionService transactionService =
 				mock(FleetAssignmentTransactionService.class);
 		AssignmentRequest request = new AssignmentRequest(ROUTE_ID, ORIGIN_ID, new BigDecimal("40.000"));
@@ -89,10 +96,12 @@ class FleetContractJsonTests {
 				UUID.fromString("66666666-6666-4666-8666-666666666666"),
 				null,
 				FleetType.OWN);
+		when(assignmentRepository.findByRouteId(ROUTE_ID)).thenReturn(Optional.empty());
 		when(transactionService.reserve(request)).thenReturn(snapshot);
 
 		FleetAssignmentPort port = new FleetAssignmentService(
 				assignmentRepository,
+				releaseEventRepository,
 				transactionService,
 				new FakeRouteSnapshotAdapter(),
 				mock(CurrentActorPort.class));

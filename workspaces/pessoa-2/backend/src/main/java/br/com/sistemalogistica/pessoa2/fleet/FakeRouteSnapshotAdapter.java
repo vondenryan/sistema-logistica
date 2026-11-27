@@ -1,4 +1,8 @@
-package br.com.sistemalogistica.pessoa2.contracts.v1;
+package br.com.sistemalogistica.pessoa2.fleet;
+
+import contracts.v1.RouteSnapshot;
+import contracts.v1.RouteSnapshotPort;
+import contracts.v1.RouteStatus;
 
 import java.util.List;
 import java.util.Map;
@@ -7,10 +11,10 @@ import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ContractException;
 
 @Component
-@Profile("(dev | test) & !integration")
+@Profile({"dev & !integration", "test"})
 public class FakeRouteSnapshotAdapter implements RouteSnapshotPort {
 
 	public static final UUID ROUTE_1_ID = UUID.fromString("33333333-3333-4333-8333-333333333333");
@@ -56,7 +60,7 @@ public class FakeRouteSnapshotAdapter implements RouteSnapshotPort {
 	public RouteSnapshot getById(UUID routeId) {
 		RouteSnapshot snapshot = routes.get(routeId);
 		if (snapshot == null) {
-			throw new ContractException("NOT_FOUND", "Route was not found.");
+			throw new ContractException("NOT_FOUND");
 		}
 		return snapshot;
 	}

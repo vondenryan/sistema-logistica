@@ -28,21 +28,20 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FakeRouteSnapshotAdapter;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReason;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReceipt;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseRequest;
 import br.com.sistemalogistica.pessoa2.security.Role;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.AssignmentSnapshot;
+import contracts.v1.ContractException;
+import contracts.v1.FleetType;
+import contracts.v1.ReleaseReason;
+import contracts.v1.ReleaseReceipt;
+import contracts.v1.ReleaseRequest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -86,9 +85,9 @@ class FleetAssignmentIntegrationTests {
 	@Autowired
 	private DataSource dataSource;
 
-	private UUID concurrencyCarrierId;
-	private UUID concurrencyDriverId;
-	private UUID concurrencyVehicleId;
+	private final List<UUID> concurrencyCarriers = new java.util.ArrayList<>();
+	private final List<UUID> concurrencyDrivers = new java.util.ArrayList<>();
+	private final List<UUID> concurrencyVehicles = new java.util.ArrayList<>();
 
 	@BeforeEach
 	void clearReservedTestFixtures() {
@@ -100,18 +99,12 @@ class FleetAssignmentIntegrationTests {
 	void cleanTestFixtures() {
 		releaseEventRepository.deleteAllByRouteIdIn(TEST_ROUTE_IDS);
 		assignmentRepository.deleteAllByRouteIdIn(TEST_ROUTE_IDS);
-		if (concurrencyVehicleId != null) {
-			vehicleRepository.deleteById(concurrencyVehicleId);
-			concurrencyVehicleId = null;
-		}
-		if (concurrencyDriverId != null) {
-			driverRepository.deleteById(concurrencyDriverId);
-			concurrencyDriverId = null;
-		}
-		if (concurrencyCarrierId != null) {
-			carrierRepository.deleteById(concurrencyCarrierId);
-			concurrencyCarrierId = null;
-		}
+		vehicleRepository.deleteAllById(concurrencyVehicles);
+		driverRepository.deleteAllById(concurrencyDrivers);
+		carrierRepository.deleteAllById(concurrencyCarriers);
+		concurrencyVehicles.clear();
+		concurrencyDrivers.clear();
+		concurrencyCarriers.clear();
 	}
 
 	@Test
@@ -147,7 +140,7 @@ class FleetAssignmentIntegrationTests {
 				ContractException.class,
 				() -> assignmentService.assign(request(FakeRouteSnapshotAdapter.ROUTE_4_ID, "2500.000")));
 
-		assertEquals("NO_ELIGIBLE_RESOURCE", exception.getCode());
+		assertEquals("NO_ELIGIBLE_RESOURCE", exception.code());
 	}
 
 	@Test
@@ -155,7 +148,7 @@ class FleetAssignmentIntegrationTests {
 		ContractException invalidCapacity = assertThrows(
 				ContractException.class,
 				() -> assignmentService.assign(request(FakeRouteSnapshotAdapter.ROUTE_4_ID, "0")));
-		assertEquals("VALIDATION_ERROR", invalidCapacity.getCode());
+		assertEquals("VALIDATION_ERROR", invalidCapacity.code());
 
 		ContractException mismatchedOrigin = assertThrows(
 				ContractException.class,
@@ -163,7 +156,7 @@ class FleetAssignmentIntegrationTests {
 						FakeRouteSnapshotAdapter.ROUTE_4_ID,
 						UUID.randomUUID(),
 						new BigDecimal("100.000"))));
-		assertEquals("PRECONDITION_FAILED", mismatchedOrigin.getCode());
+		assertEquals("PRECONDITION_FAILED", mismatchedOrigin.code());
 	}
 
 	@Test
@@ -173,9 +166,9 @@ class FleetAssignmentIntegrationTests {
 					ContractException.class,
 					() -> assignmentService.assign(request(FakeRouteSnapshotAdapter.ROUTE_4_ID, capacity)));
 
-			assertEquals("VALIDATION_ERROR", exception.getCode());
-			assertTrue(exception.getDetails().stream()
-					.anyMatch(detail -> "requiredCapacityKg".equals(detail.get("field"))));
+			assertEquals("VALIDATION_ERROR", exception.code());
+			assertEquals(1, exception.details().size());
+			assertEquals("requiredCapacityKg", ((java.util.Map<?, ?>) exception.details().getFirst()).get("field"));
 		}
 	}
 
@@ -185,7 +178,7 @@ class FleetAssignmentIntegrationTests {
 				ContractException.class,
 				() -> assignmentService.assign(request(FakeRouteSnapshotAdapter.ASSIGNED_ROUTE_ID, "100.000")));
 
-		assertEquals("CONFLICT", exception.getCode());
+		assertEquals("CONFLICT", exception.code());
 	}
 
 	@Test
@@ -198,7 +191,7 @@ class FleetAssignmentIntegrationTests {
 		ContractException conflict = assertThrows(
 				ContractException.class,
 				() -> assignmentService.assign(request(FakeRouteSnapshotAdapter.ROUTE_4_ID, "501.000")));
-		assertEquals("IDEMPOTENCY_CONFLICT", conflict.getCode());
+		assertEquals("IDEMPOTENCY_CONFLICT", conflict.code());
 	}
 
 	@Test
@@ -212,7 +205,7 @@ class FleetAssignmentIntegrationTests {
 						plannedAssignment.routeId(),
 						plannedEventId,
 						ReleaseReason.ROUTE_COMPLETED)));
-		assertEquals("PRECONDITION_FAILED", notCompleted.getCode());
+		assertEquals("PRECONDITION_FAILED", notCompleted.code());
 		FleetAssignment plannedEntity = assignmentRepository.findByRouteId(plannedAssignment.routeId()).orElseThrow();
 		plannedEntity.release(Instant.now());
 		assignmentRepository.saveAndFlush(plannedEntity);
@@ -233,7 +226,7 @@ class FleetAssignmentIntegrationTests {
 						assigned.getRouteId(),
 						eventId,
 						ReleaseReason.ROUTE_CANCELLED)));
-		assertEquals("PRECONDITION_FAILED", cancellation.getCode());
+		assertEquals("PRECONDITION_FAILED", cancellation.code());
 
 		ReleaseRequest completed = new ReleaseRequest(assigned.getRouteId(), eventId, ReleaseReason.ROUTE_COMPLETED);
 		ReleaseReceipt first = assignmentService.release(completed);
@@ -248,7 +241,7 @@ class FleetAssignmentIntegrationTests {
 						UUID.randomUUID(),
 						UUID.randomUUID(),
 						ReleaseReason.ROUTE_COMPLETED)));
-		assertEquals("NOT_FOUND", unknownRoute.getCode());
+		assertEquals("NOT_FOUND", unknownRoute.code());
 	}
 
 	@Test
@@ -331,7 +324,7 @@ class FleetAssignmentIntegrationTests {
 		assertEquals(1, attempts.stream().filter(attempt -> attempt.assignment() != null).count());
 		assertEquals(1, attempts.stream().filter(attempt -> "NO_ELIGIBLE_RESOURCE".equals(attempt.errorCode())).count());
 		assertEquals(1, assignmentRepository.findAllByReleasedAtIsNull().stream()
-				.filter(assignment -> assignment.getVehicleId().equals(concurrencyVehicleId))
+				.filter(assignment -> assignment.getVehicleId().equals(concurrencyVehicles.getFirst()))
 				.count());
 	}
 
@@ -348,6 +341,21 @@ class FleetAssignmentIntegrationTests {
 		assertNotNull(results.get(0).assignmentId());
 	}
 
+	@Test
+	void concurrentRoutesReserveDistinctPairsWithoutConflict() throws Exception {
+		createSingleThirdPartyPair();
+		createSingleThirdPartyPair();
+
+		var first = request(FakeRouteSnapshotAdapter.ROUTE_2_ID, "2500.000");
+		var second = request(FakeRouteSnapshotAdapter.ROUTE_3_ID, "2500.000");
+		var results = runTogether(() -> assignmentService.assign(first), () -> assignmentService.assign(second));
+
+		assertEquals(2, results.stream().map(AssignmentSnapshot::driverId).distinct().count());
+		assertEquals(2, results.stream().map(AssignmentSnapshot::vehicleId).distinct().count());
+		assertEquals(results.getFirst(), assignmentService.assign(first));
+		assertEquals(results.getLast(), assignmentService.assign(second));
+	}
+
 	private void createSingleThirdPartyPair() {
 		Carrier carrier = carrierRepository.saveAndFlush(
 				new Carrier("Concurrency Carrier " + UUID.randomUUID(), true));
@@ -359,9 +367,9 @@ class FleetAssignmentIntegrationTests {
 				FleetType.THIRD_PARTY,
 				carrier.getId(),
 				true));
-		concurrencyCarrierId = carrier.getId();
-		concurrencyDriverId = driver.getId();
-		concurrencyVehicleId = vehicle.getId();
+		concurrencyCarriers.add(carrier.getId());
+		concurrencyDrivers.add(driver.getId());
+		concurrencyVehicles.add(vehicle.getId());
 	}
 
 	private static AssignmentRequest request(UUID routeId, String requiredCapacityKg) {
@@ -372,7 +380,7 @@ class FleetAssignmentIntegrationTests {
 		try {
 			return new Attempt(assignmentService.assign(request), null);
 		} catch (ContractException exception) {
-			return new Attempt(null, exception.getCode());
+			return new Attempt(null, exception.code());
 		}
 	}
 

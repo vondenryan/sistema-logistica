@@ -3,7 +3,7 @@ package br.com.sistemalogistica.pessoa2.fleet;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
+import contracts.v1.FleetType;
 
 record CarrierCreateRequest(String name, boolean active) {
 }

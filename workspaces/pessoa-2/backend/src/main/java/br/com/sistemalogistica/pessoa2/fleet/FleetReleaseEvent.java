@@ -10,7 +10,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReason;
+import contracts.v1.ReleaseReason;
 
 @Entity
 @Table(name = "fleet_release_events")
