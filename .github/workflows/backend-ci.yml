@@ -12,6 +12,20 @@ jobs:
     name: CI Global
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres-p2:
+        image: postgres:16
+        env:
+          POSTGRES_DB: pessoa2_db
+          POSTGRES_USER: pessoa2_user
+          POSTGRES_PASSWORD: pessoa2_local_only
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U pessoa2_user -d pessoa2_db"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v6
         with:
@@ -44,6 +58,15 @@ jobs:
           if (( ${#backends[@]} + ${#frontends[@]} + ${#contracts[@]} == 0 )); then
             echo "::error::Nenhuma suíte foi encontrada em workspaces/."
             exit 1
+          fi
+
+          p1=workspaces/pessoa-1/backend/src
+          p2=workspaces/pessoa-2/backend/src
+          if [[ -f "$p1/main/java/contracts/v1/PartnerLookupPort.java" && -f "$p2/main/java/contracts/v1/PartnerLookupPort.java" ]]; then
+            for type in AddressSnapshot ContractException OriginSnapshot OriginType PartnerLookupPort StoreSnapshot; do
+              diff -u "$p1/main/java/contracts/v1/$type.java" "$p2/main/java/contracts/v1/$type.java"
+            done
+            diff -u "$p1/test/java/contracts/v1/PartnerLookupContract.java" "$p2/test/java/contracts/v1/PartnerLookupContract.java"
           fi
 
           for pom in "${backends[@]}"; do

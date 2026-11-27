@@ -1,0 +1,24 @@
+name: sistema-logistica-pessoa2
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sistema-logistica-pessoa2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${P2_POSTGRES_DB:-pessoa2_db}
+      POSTGRES_USER: ${P2_POSTGRES_USER:-pessoa2_user}
+      POSTGRES_PASSWORD: ${P2_POSTGRES_PASSWORD:-pessoa2_local_only}
+    ports:
+      - "${P2_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - pessoa2_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pessoa2_pgdata:
+    name: sistema_logistica_pessoa2_pgdata
