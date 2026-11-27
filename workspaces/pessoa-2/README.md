@@ -105,3 +105,7 @@ O fake local de `RouteSnapshotPort` existe apenas em `dev` e `test`, não consul
 A seleção usa somente motoristas e veículos ativos e sem reserva ativa, capacidade suficiente, frota própria primeiro e fallback terceirizado; pares terceirizados precisam pertencer à mesma transportadora. Entre candidatos, motoristas são ordenados pelo número de reservas ativas no próprio fleet (decisão provisória para representar “entregas pendentes”) e depois por UUID; veículos empatados também são ordenados por UUID. Não havendo par elegível, a porta retorna `NO_ELIGIBLE_RESOURCE` (409). A migration V6 mantém uma única linha por rota e protege motorista/veículo contra reservas ativas concorrentes.
 
 `FleetReleasePort.release` deduplica por `eventId`. `ROUTE_CANCELLED` retorna `PRECONDITION_FAILED` (422), pois a regra de cancelamento ainda não foi aprovada. Liberar uma reserva mantém a linha da atribuição, e `route_id` continua único: a mesma rota não recebe uma nova atribuição após a liberação.
+
+## Demonstração isolada e integração
+
+Consulte [INTEGRATION.md](INTEGRATION.md) para iniciar o workspace sem outros serviços, executar o roteiro de CRUD e atribuição com seed/fakes, e acompanhar separadamente as evidências de validação local e CI.
