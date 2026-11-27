@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -58,7 +59,8 @@ class FleetAssignmentIntegrationTests {
 			FakeRouteSnapshotAdapter.ROUTE_2_ID,
 			FakeRouteSnapshotAdapter.ROUTE_3_ID,
 			FakeRouteSnapshotAdapter.ROUTE_4_ID,
-			FakeRouteSnapshotAdapter.ROUTE_5_ID);
+			FakeRouteSnapshotAdapter.ROUTE_5_ID,
+			FakeRouteSnapshotAdapter.COMPLETED_ROUTE_ID);
 
 	@Autowired
 	private FleetAssignmentService assignmentService;
@@ -201,24 +203,44 @@ class FleetAssignmentIntegrationTests {
 
 	@Test
 	void releaseIsIdempotentRejectsCancellationAndKeepsRouteAssignment() {
-		AssignmentRequest assignmentRequest = request(FakeRouteSnapshotAdapter.ROUTE_4_ID, "500.000");
-		AssignmentSnapshot assigned = assignmentService.assign(assignmentRequest);
+		AssignmentSnapshot plannedAssignment = assignmentService.assign(
+				request(FakeRouteSnapshotAdapter.ROUTE_4_ID, "500.000"));
+		UUID plannedEventId = UUID.randomUUID();
+		ContractException notCompleted = assertThrows(
+				ContractException.class,
+				() -> assignmentService.release(new ReleaseRequest(
+						plannedAssignment.routeId(),
+						plannedEventId,
+						ReleaseReason.ROUTE_COMPLETED)));
+		assertEquals("PRECONDITION_FAILED", notCompleted.getCode());
+		FleetAssignment plannedEntity = assignmentRepository.findByRouteId(plannedAssignment.routeId()).orElseThrow();
+		plannedEntity.release(Instant.now());
+		assignmentRepository.saveAndFlush(plannedEntity);
+
+		AssignmentRequest assignmentRequest = request(FakeRouteSnapshotAdapter.COMPLETED_ROUTE_ID, "500.000");
+		FleetAssignment assigned = assignmentRepository.saveAndFlush(new FleetAssignment(
+				UUID.randomUUID(),
+				assignmentRequest,
+				OWN_DRIVER_ID,
+				OWN_VEHICLE_ID,
+				null,
+				FleetType.OWN));
 		UUID eventId = UUID.randomUUID();
 
 		ContractException cancellation = assertThrows(
 				ContractException.class,
 				() -> assignmentService.release(new ReleaseRequest(
-						assigned.routeId(),
+						assigned.getRouteId(),
 						eventId,
 						ReleaseReason.ROUTE_CANCELLED)));
 		assertEquals("PRECONDITION_FAILED", cancellation.getCode());
 
-		ReleaseRequest completed = new ReleaseRequest(assigned.routeId(), eventId, ReleaseReason.ROUTE_COMPLETED);
+		ReleaseRequest completed = new ReleaseRequest(assigned.getRouteId(), eventId, ReleaseReason.ROUTE_COMPLETED);
 		ReleaseReceipt first = assignmentService.release(completed);
 		ReleaseReceipt repeated = assignmentService.release(completed);
 		assertTrue(first.released());
 		assertEquals(false, repeated.released());
-		assertEquals(assigned.assignmentId(), assignmentService.assign(assignmentRequest).assignmentId());
+		assertNotNull(assignmentRepository.findByRouteId(assigned.getRouteId()).orElseThrow().getReleasedAt());
 
 		ContractException unknownRoute = assertThrows(
 				ContractException.class,

@@ -19,6 +19,7 @@ public class FakeRouteSnapshotAdapter implements RouteSnapshotPort {
 	public static final UUID ROUTE_4_ID = UUID.fromString("33333333-3333-4333-8333-333333333336");
 	public static final UUID ROUTE_5_ID = UUID.fromString("33333333-3333-4333-8333-333333333337");
 	public static final UUID ASSIGNED_ROUTE_ID = UUID.fromString("33333333-3333-4333-8333-333333333338");
+	public static final UUID COMPLETED_ROUTE_ID = UUID.fromString("33333333-3333-4333-8333-333333333339");
 
 	private static final UUID STORE_ID = UUID.fromString("22222222-2222-4222-8222-222222222222");
 	private static final UUID ORIGIN_ID = UUID.fromString("11111111-1111-4111-8111-111111111111");
@@ -37,6 +38,15 @@ public class FakeRouteSnapshotAdapter implements RouteSnapshotPort {
 					STORE_ID,
 					ORIGIN_ID,
 					RouteStatus.ASSIGNED,
+					List.of(ORDER_ID),
+					DRIVER_ID,
+					VEHICLE_ID,
+					null),
+			COMPLETED_ROUTE_ID, new RouteSnapshot(
+					COMPLETED_ROUTE_ID,
+					STORE_ID,
+					ORIGIN_ID,
+					RouteStatus.COMPLETED,
 					List.of(ORDER_ID),
 					DRIVER_ID,
 					VEHICLE_ID,

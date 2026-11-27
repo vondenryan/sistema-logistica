@@ -73,11 +73,17 @@ public class FleetAssignmentTransactionService {
 
 	@Transactional
 	public ReleaseReceipt release(ReleaseRequest request) {
-		routeSnapshotPort.getById(request.routeId());
+		RouteSnapshot route = routeSnapshotPort.getById(request.routeId());
 		if (request.reason() == ReleaseReason.ROUTE_CANCELLED) {
 			throw new ContractException(
 					"PRECONDITION_FAILED",
 					"Fleet reservations cannot be released for route cancellation before that rule is approved.");
+		}
+		if (request.reason() == ReleaseReason.ROUTE_COMPLETED
+				&& route.status() != RouteStatus.COMPLETED) {
+			throw new ContractException(
+					"PRECONDITION_FAILED",
+					"A fleet reservation can only be released after the route is completed.");
 		}
 
 		FleetReleaseEvent existingEvent = releaseEventRepository.findById(request.eventId()).orElse(null);
