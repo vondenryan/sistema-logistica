@@ -140,11 +140,26 @@ public class JdbcDeliveryRepository implements DeliveryRepository {
         SELECT id, order_id, route_id, status, receiver_name, created_at, updated_at
         FROM deliveries.deliveries
         WHERE route_id IN (:routeIds)
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT :limit OFFSET :offset
         """,
         params,
         deliveryRowMapper);
+  }
+
+  @Override
+  public long countByRouteIds(List<UUID> routeIds) {
+    if (routeIds == null || routeIds.isEmpty()) {
+      return 0L;
+    }
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue("routeIds", routeIds);
+    Long count =
+        namedParameterJdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM deliveries.deliveries WHERE route_id IN (:routeIds)",
+            params,
+            Long.class);
+    return count != null ? count : 0L;
   }
 
   @Override
@@ -173,7 +188,7 @@ public class JdbcDeliveryRepository implements DeliveryRepository {
         SELECT id, delivery_id, from_status, to_status, actor_id, actor_role, reason, receiver_name, occurred_at
         FROM deliveries.delivery_events
         WHERE delivery_id = ?
-        ORDER BY occurred_at ASC
+        ORDER BY occurred_at ASC, id ASC
         """,
         eventRowMapper,
         deliveryId);

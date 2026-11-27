@@ -257,6 +257,11 @@ class DeliveryServicePortTest {
     }
 
     @Override
+    public long countByRouteIds(List<UUID> routeIds) {
+      return deliveries.values().stream().filter(d -> routeIds.contains(d.getRouteId())).count();
+    }
+
+    @Override
     public void recordEvent(DeliveryEvent event) {
       events.add(event);
     }

@@ -31,18 +31,22 @@ Na **Sprint 1 (Dias 1–2)**, o escopo implementado cobre:
    cp .env.example .env
    ```
 
-2. Suba o banco de dados PostgreSQL local isolado:
+2. Suba o banco de dados PostgreSQL e o servidor SMTP Mailpit locais:
    ```bash
    docker compose up -d
    ```
-   O PostgreSQL será iniciado na porta **5434**, com banco `logistics_p3` e credenciais `logistics`/`logistics`.
+   * PostgreSQL: porta **5434**, banco `logistics_p3` (`logistics`/`logistics`).
+   * Mailpit: SMTP na porta **1025** e interface Web em `http://localhost:8025`.
 
 ---
 
 ## 4. Executando a Aplicação
 
-Para iniciar o backend Spring Boot:
+Para iniciar o backend Spring Boot, carregue o `.env` a partir deste diretório. As variáveis `NOTIFICATIONS_SMTP_ENABLED=true` e `NOTIFICATIONS_OUTBOX_SCHEDULER_ENABLED=true` do exemplo ativam o SMTP e o envio automático pelo agendador.
 ```bash
+set -a
+. ./.env
+set +a
 cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
@@ -52,21 +56,42 @@ A API estará acessível em `http://localhost:8083`.
 
 ## 5. Executando os Testes
 
-Os testes são totalmente autocontidos e executam sem necessidade de serviços externos ou Docker ativos (utilizando banco H2 em modo de compatibilidade PostgreSQL com Flyway):
+Os testes do backend são totalmente autocontidos e executam sem necessidade de serviços externos ou Docker ativos (utilizando banco H2 em modo de compatibilidade PostgreSQL com Flyway):
 
 ```bash
 cd backend
 mvn test
 ```
 
+Para o frontend Vue 3 (painel do motorista e rastreamento público):
+
+```bash
+cd frontend
+npm ci
+npm test
+npm run build
+```
+
 ---
 
-## 6. Endpoints REST da Sprint 1
+### Correções da revisão do PR #10
+
+O rastreamento usa o IP da conexão por padrão; proxies devem ser explicitamente autorizados e sobrescrever o cabeçalho encaminhado. O limitador tem capacidade máxima e expiração de clientes inativos. Veja [configuração e limites](INTEGRATION.md#ip-de-rastreamento-e-capacidade-do-limitador).
+
+O painel permite navegar entre páginas, atualizar a página atual e alterar o status de entregas depois dos primeiros 20 itens. O backend rejeita deslocamentos de paginação acima do intervalo suportado.
+
+Validação em 24/11/2026: 68 testes backend e 6 frontend aprovados, além dos builds. No ambiente remoto sem `javac`, o backend foi compilado e testado em Java 21 com Eclipse, usando uma cópia temporária do POM (compiler plugin 3.14.1 e plexus-compiler-eclipse 2.15.0); o POM versionado permaneceu intacto. Os testes de acesso direto e proxy usam MockMvc com o endereço da conexão controlado; não foi validado um proxy de implantação real.
+
+## 6. Endpoints REST (Sprints 1 e 2)
 
 | Método | Endpoint | Descrição | Regra de Autorização |
 |---|---|---|---|
-| `GET` | `/api/v1/deliveries/my` | Lista entregas do motorista | DRIVER atribuído |
+| `GET` | `/api/v1/deliveries/my` | Lista paginada de entregas do motorista | DRIVER autenticado |
 | `GET` | `/api/v1/deliveries/{id}` | Consulta detalhes da entrega | DRIVER atribuído, OPERATOR ou ADMIN |
 | `GET` | `/api/v1/deliveries/{id}/events` | Lista histórico imutável de eventos | DRIVER atribuído, OPERATOR ou ADMIN |
 | `PATCH` | `/api/v1/deliveries/{id}/status` | Atualiza status (`IN_TRANSIT`, `FAILED_ATTEMPT`, `ASSIGNED`) | DRIVER atribuído ou OPERATOR |
 | `POST` | `/api/v1/deliveries/{id}/complete` | Conclui entrega com nome do recebedor | DRIVER atribuído ou OPERATOR |
+| `GET` | `/api/v1/tracking/{code}` | Rastreamento público (`status` e `milestones`) | Público (rate limit por IP) |
+| `POST` | `/api/v1/documents` | Gera NF-e/CT-e simulados (`201` novo / `200` existente) | ADMIN, OPERATOR ou STORE própria |
+| `GET` | `/api/v1/documents/{documentId}` | Consulta metadados do documento simulado | ADMIN, OPERATOR ou STORE própria |
+| `GET` | `/api/v1/documents/{documentId}/pdf` | Retorna PDF acadêmico com marca d'água | ADMIN, OPERATOR ou STORE própria |
