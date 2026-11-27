@@ -102,3 +102,14 @@ npm run build
 ```
 
 Os testes de contrato usam fixtures JSON v1 e cobrem consulta de parceiro, serialização de atribuição, pré-condições de rota, capacidade, idempotência, conflito e concorrência.
+
+### Evidências — Sprint 4
+
+| Execução | Resultado |
+|---|---|
+| Local — suíte completa backend + PostgreSQL | `.\mvnw.cmd --batch-mode -DfailIfNoTests=true test` — **91 testes passaram** (0 falhas, 0 erros, 0 ignorados), incluindo `FleetAssignmentIntegrationTests` (15), `FleetContractJsonTests` (3), `FakeRouteSnapshotAdapterTests` (2) e demais. |
+| Local — build integrado (`-Pintegration`) | `.\mvnw.cmd --batch-mode -Pintegration package -DskipTests` — `BUILD SUCCESS`; JAR `pessoa2-backend-0.0.1-SNAPSHOT-integration.jar` gerado. |
+| Local — smoke test integrado | `python scripts/smoke-integration.py` contra `IntegratedApplication` em porta 18080 com banco `sprint4_smoke_db` descartável — **Smoke OK.** Rota própria persistida; concorrência sem reserva dupla. |
+| Local — Flyway reinicialização | Segunda inicialização do mesmo JAR contra o mesmo banco — validação limpa do histórico, sem re-aplicação de migrações. |
+| Local — frontend | `npm ci && npm test && npm run build` — **16 arquivos / 51 testes passaram**; build aprovado. |
+| CI — workflow `backend-ci.yml` | Será validado pelo GitHub Actions ao abrir o PR `feat/p2-sprint-4` → `develop`. |
