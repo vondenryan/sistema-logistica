@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
 
 @Component
-@Profile({"dev", "test"})
+@Profile({"dev", "test", "integration-demo & integration"})
 public class FleetSeed implements ApplicationRunner {
 
 	private static final UUID CARRIER_ALFA_ID = UUID.fromString("77777777-7777-4777-8777-777777777777");

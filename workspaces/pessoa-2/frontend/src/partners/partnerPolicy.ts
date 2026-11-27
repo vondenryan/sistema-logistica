@@ -1,14 +1,14 @@
-import type { DevRole } from '../devActor'
+import type { Role } from '../devActor'
 
-export function canManagePartners(role: DevRole | null): boolean {
+export function canManagePartners(role: Role | null): boolean {
   return role === 'ADMIN' || role === 'OPERATOR'
 }
 
-export function canListPartners(role: DevRole | null): boolean {
+export function canListPartners(role: Role | null): boolean {
   return canManagePartners(role)
 }
 
-export function canReadPartnerById(role: DevRole | null): boolean {
+export function canReadPartnerById(role: Role | null): boolean {
   return canManagePartners(role) || role === 'STORE'
 }
 

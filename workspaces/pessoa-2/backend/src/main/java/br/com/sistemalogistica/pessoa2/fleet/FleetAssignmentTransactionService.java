@@ -10,11 +10,13 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
 import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentSnapshot;
 import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
+import contracts.v1.OriginSnapshot;
 import contracts.v1.PartnerLookupPort;
 import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReason;
 import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReceipt;
@@ -33,6 +35,7 @@ public class FleetAssignmentTransactionService {
 	private final VehicleRepository vehicleRepository;
 	private final RouteSnapshotPort routeSnapshotPort;
 	private final PartnerLookupPort partnerLookupPort;
+	private final List<RouteCapacityValidator> capacityValidators;
 
 	public FleetAssignmentTransactionService(
 			FleetAssignmentRepository assignmentRepository,
@@ -40,17 +43,28 @@ public class FleetAssignmentTransactionService {
 			DriverRepository driverRepository,
 			VehicleRepository vehicleRepository,
 			RouteSnapshotPort routeSnapshotPort,
-			PartnerLookupPort partnerLookupPort) {
+			PartnerLookupPort partnerLookupPort,
+			List<RouteCapacityValidator> capacityValidators) {
 		this.assignmentRepository = assignmentRepository;
 		this.releaseEventRepository = releaseEventRepository;
 		this.driverRepository = driverRepository;
 		this.vehicleRepository = vehicleRepository;
 		this.routeSnapshotPort = routeSnapshotPort;
 		this.partnerLookupPort = partnerLookupPort;
+		this.capacityValidators = capacityValidators;
 	}
 
-	@Transactional
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	public AssignmentSnapshot reserve(AssignmentRequest request) {
+		lockReservations();
+		FleetAssignment existing = assignmentRepository.findByRouteId(request.routeId()).orElse(null);
+		if (existing != null) {
+			if (!existing.getOriginId().equals(request.originId())
+					|| existing.getRequiredCapacityKg().compareTo(request.requiredCapacityKg()) != 0) {
+				throw idempotencyConflict();
+			}
+			return snapshot(existing);
+		}
 		RouteSnapshot route = routeSnapshotPort.getById(request.routeId());
 		if (route.status() != RouteStatus.PLANNED) {
 			throw new ContractException("CONFLICT", "Only PLANNED routes can be assigned.");
@@ -58,7 +72,13 @@ public class FleetAssignmentTransactionService {
 		if (!route.originId().equals(request.originId())) {
 			throw new ContractException("PRECONDITION_FAILED", "The requested origin does not match the route.");
 		}
-		partnerLookupPort.getOrigin(request.originId());
+		OriginSnapshot origin = partnerLookupPort.getOrigin(request.originId());
+		if (!origin.active() || !route.storeId().equals(origin.storeId())
+				|| !partnerLookupPort.getStore(origin.storeId()).active()) {
+			throw new ContractException("PRECONDITION_FAILED", "The route requires an active origin and store.");
+		}
+
+		capacityValidators.forEach(validator -> validator.validate(route, request.requiredCapacityKg()));
 
 		Selection selection = selectResources(request);
 		FleetAssignment assignment = assignmentRepository.saveAndFlush(new FleetAssignment(
@@ -71,8 +91,9 @@ public class FleetAssignmentTransactionService {
 		return snapshot(assignment);
 	}
 
-	@Transactional
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	public ReleaseReceipt release(ReleaseRequest request) {
+		lockReservations();
 		RouteSnapshot route = routeSnapshotPort.getById(request.routeId());
 		if (request.reason() == ReleaseReason.ROUTE_CANCELLED) {
 			throw new ContractException(
@@ -104,6 +125,11 @@ public class FleetAssignmentTransactionService {
 		releaseEventRepository.saveAndFlush(
 				new FleetReleaseEvent(request.eventId(), request.routeId(), request.reason()));
 		return new ReleaseReceipt(request.routeId(), released);
+	}
+
+	private void lockReservations() {
+		// Hold the same database row through selection and commit, including when routing owns the transaction.
+		Objects.requireNonNull(assignmentRepository.lockReservations(), "Missing fleet reservation lock row");
 	}
 
 	private Selection selectResources(AssignmentRequest request) {
@@ -164,7 +190,7 @@ public class FleetAssignmentTransactionService {
 	}
 
 	private static ContractException idempotencyConflict() {
-		return new ContractException("IDEMPOTENCY_CONFLICT", "The event ID was already used with a different payload.");
+		return new ContractException("IDEMPOTENCY_CONFLICT", "The ID was already used with a different payload.");
 	}
 
 	private static ContractException notFound() {

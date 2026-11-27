@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 
 @Component
-@Profile("!dev")
+@Profile("!dev & !integration")
 public class UnauthenticatedCurrentActorAdapter implements CurrentActorPort {
 
 	@Override

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ApiError, api, type Carrier, type Driver, type FleetAssignment, type Vehicle } from '../api'
-import { isDevMode, devActor } from '../devActor'
+import { currentRole, isDevMode } from '../devActor'
 import { canManagePartners } from '../partners/partnerPolicy'
 import { validateFleetAssignment, isValidAssignmentRouteId } from '../fleet/assignmentValidation'
 import { formatFleetError } from '../fleet/fleetError'
@@ -22,7 +22,7 @@ interface AssignmentDetails {
   carrier: Carrier | null
 }
 
-const role = computed(() => (isDevMode ? devActor.role : null))
+const role = computed(() => (currentRole.value))
 const canManage = computed(() => canManagePartners(role.value))
 const lookupRouteId = ref('')
 const lookupLoading = ref(false)
@@ -56,6 +56,26 @@ async function lookupAssignment() {
     lookupError.value = formatAssignmentError(error)
   } finally {
     lookupLoading.value = false
+  }
+}
+
+async function assignRealRoute() {
+  if (!canManage.value || !isValidAssignmentRouteId(lookupRouteId.value)) {
+    lookupError.value = 'Informe um UUID válido para atribuir a rota.'
+    return
+  }
+  saving.value = true
+  lookupError.value = ''
+  statusMessage.value = ''
+  assignment.value = null
+  try {
+    await api.assignRoute(lookupRouteId.value.trim())
+    await lookupAssignment()
+    if (assignment.value) statusMessage.value = 'Atribuição confirmada.'
+  } catch (error) {
+    lookupError.value = formatAssignmentError(error)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -160,11 +180,15 @@ function formatAssignmentError(error: unknown): string {
             required
             :aria-invalid="lookupError ? 'true' : 'false'"
           />
-          <button type="submit" class="secondary-button" :disabled="lookupLoading">
+          <button type="submit" class="secondary-button" :disabled="lookupLoading || saving">
             {{ lookupLoading ? 'Consultando…' : 'Consultar' }}
           </button>
         </form>
       </section>
+
+      <button v-if="!isDevMode" type="button" :disabled="saving || lookupLoading" @click="assignRealRoute">
+        Atribuir rota
+      </button>
 
       <section v-if="isDevMode" class="store-form-panel" aria-labelledby="demo-assignment-title">
         <h2 id="demo-assignment-title">Demonstração de atribuição (dev)</h2>

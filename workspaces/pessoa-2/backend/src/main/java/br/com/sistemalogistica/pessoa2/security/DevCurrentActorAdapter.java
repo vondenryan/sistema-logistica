@@ -13,7 +13,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 
 @Component
-@Profile("dev")
+@Profile("dev & !integration")
 public class DevCurrentActorAdapter implements CurrentActorPort {
 
 	private static final String ROLE_HEADER = "X-Dev-Role";

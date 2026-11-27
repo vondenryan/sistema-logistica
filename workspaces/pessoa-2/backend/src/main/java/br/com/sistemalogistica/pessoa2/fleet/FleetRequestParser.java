@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import tools.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
@@ -75,7 +75,7 @@ final class FleetRequestParser {
 		if (body == null || !body.isObject()) {
 			throw ContractException.validation("body", "A JSON object must be provided.");
 		}
-		body.propertyNames().forEach(field -> {
+		body.fieldNames().forEachRemaining(field -> {
 			if (!allowed.contains(field)) {
 				throw ContractException.validation(field, "Unknown field.");
 			}

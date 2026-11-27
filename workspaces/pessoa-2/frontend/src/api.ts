@@ -1,4 +1,4 @@
-import { devActorHeaders } from './devActor'
+import { clearSession, devActorHeaders, session, type Role } from './devActor'
 
 export interface Store {
   id: string
@@ -136,7 +136,14 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set(name, value)
   }
 
+  const token = session.accessToken
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
   const response = await fetch(path, { ...init, headers })
+  if (response.status === 401 && token && session.accessToken === token) {
+    clearSession()
+  }
   const responseText = await response.text()
   let body: unknown
   if (responseText !== '') {
@@ -174,6 +181,20 @@ function isProblemDetail(value: unknown): value is ProblemDetail {
 }
 
 export const api = {
+  signIn(email: string, password: string) {
+    return request<{ accessToken: string; actor: { role: Role; storeId?: string | null } }>(
+      '/api/v1/auth/login',
+      { method: 'POST', body: JSON.stringify({ email, password }) },
+    )
+  },
+
+  async assignRoute(routeId: string): Promise<void> {
+    await request(`/api/v1/routes/${encodeURIComponent(routeId)}/assign`, {
+      method: 'POST',
+      body: '{}',
+    })
+  },
+
   listStores(page: number, size: number): Promise<StorePage> {
     const query = new URLSearchParams({ page: String(page), size: String(size) })
     return request<StorePage>(`/api/v1/stores?${query}`)
