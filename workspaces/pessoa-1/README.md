@@ -1,4 +1,4 @@
-# Pessoa 1 — Sprint 1
+# Pessoa 1 — núcleo e integração
 
 Workspace isolado de identity, orders, billing, routing e shell Vue. Os contratos normativos estão em [docs/CONTRACTS_V1.md](docs/CONTRACTS_V1.md); em divergência com o planejamento de Sprint, prevalecem aqueles contratos e as decisões aprovadas do DAT. As integrações com outras pessoas usam fakes locais nesta Sprint; veja [INTEGRATION.md](INTEGRATION.md). O banco é local a este workspace, sem dependência dos módulos das outras pessoas.
 
@@ -63,3 +63,7 @@ Frete e rotas estão descritos em [docs/SPRINT_2_OPERATIONS.md](docs/SPRINT_2_OP
 ## Sprint 3 — estabilização isolada
 
 Execute `./scripts/verify-sprint3.sh` para o smoke automatizado com PostgreSQL descartável e fakes, após instalar os pré-requisitos/cache descritos em [operações](docs/SPRINT_3_OPERATIONS.md). O teste não usa o banco Docker normal nem Supabase e limpa seus próprios recursos. Consulte [evidências e limites](docs/SPRINT_3_VALIDATION.md) e o [inventário de integração](INTEGRATION.md) antes de compor os módulos na Sprint 4.
+
+## Sprint 4 — preparação parcial
+
+As entregas P2/P3 ainda não existem, então a integração permanece bloqueada. Estão preparados Dockerfiles, gateway Nginx, `compose.integration.yml` com PostgreSQL/Mailpit e inventário de pré-requisitos. Veja [operações](docs/SPRINT_4_OPERATIONS.md) e [evidências/pendências](docs/SPRINT_4_VALIDATION.md). O teste de componentes usa dev/fakes explicitamente e não substitui o aceite integrado sem fakes.

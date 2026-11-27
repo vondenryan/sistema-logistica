@@ -17,10 +17,12 @@ class LoginRateLimitFilter extends OncePerRequestFilter {
 
   private final Map<String, Window> attempts = new LinkedHashMap<>(16, .75f, true);
   private final ObjectMapper mapper;
+  private final ClientIpResolver clients;
   private final Clock clock = Clock.systemUTC();
 
-  LoginRateLimitFilter(ObjectMapper mapper) {
+  LoginRateLimitFilter(ObjectMapper mapper, ClientIpResolver clients) {
     this.mapper = mapper;
+    this.clients = clients;
   }
 
   private synchronized boolean allow(String ip) {
@@ -42,7 +44,7 @@ class LoginRateLimitFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
     if (req.getMethod().equals("POST")
         && req.getRequestURI().equals("/api/v1/auth/login")
-        && !allow(req.getRemoteAddr())) {
+        && !allow(clients.resolve(req))) {
       res.setStatus(429);
       res.setHeader("Retry-After", "60");
       res.setContentType("application/problem+json");

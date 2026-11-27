@@ -216,7 +216,7 @@ class FakesTest {
 
   @Test
   void loginRateLimitUsesMatchingProblemStatus() throws Exception {
-    var filter = new LoginRateLimitFilter(new ObjectMapper().findAndRegisterModules());
+    var filter = new LoginRateLimitFilter(new ObjectMapper().findAndRegisterModules(), new ClientIpResolver(""));
     for (int n = 0; n < 31; n++) {
       var req = new MockHttpServletRequest("POST", "/api/v1/auth/login");
       req.setRemoteAddr("192.0.2.1");
@@ -234,10 +234,18 @@ class FakesTest {
   void refusesMixedProductionAndDevelopmentProfiles() {
     var env = new org.springframework.mock.env.MockEnvironment();
     env.setActiveProfiles("dev", "prod");
-    assertThatThrownBy(() -> new SecurityConfig().profileGuard(env).afterPropertiesSet())
+    assertThatThrownBy(
+            () ->
+                ProfileGuard.validateProfiles(env)
+                    .postProcessBeanFactory(
+                        new org.springframework.beans.factory.support.DefaultListableBeanFactory()))
         .isInstanceOf(IllegalStateException.class);
     env.setActiveProfiles("test", "integration");
-    assertThatThrownBy(() -> new SecurityConfig().profileGuard(env).afterPropertiesSet())
+    assertThatThrownBy(
+            () ->
+                ProfileGuard.validateProfiles(env)
+                    .postProcessBeanFactory(
+                        new org.springframework.beans.factory.support.DefaultListableBeanFactory()))
         .isInstanceOf(IllegalStateException.class);
   }
 }
