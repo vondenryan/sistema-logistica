@@ -13,8 +13,6 @@ public interface DeliveryRepository {
 
   List<Delivery> findByRouteId(UUID routeId);
 
-  List<UUID> findAssignedRouteIds();
-
   List<Delivery> findByRouteIds(List<UUID> routeIds, int offset, int limit);
 
   long countByRouteIds(List<UUID> routeIds);

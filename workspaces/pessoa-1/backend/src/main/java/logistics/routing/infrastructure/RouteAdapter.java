@@ -15,7 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.*;
 
 @Repository
-class RouteAdapter implements RouteStore {
+class RouteAdapter implements RouteStore, DriverRouteLookupPort {
   private final JdbcTemplate db;
 
   RouteAdapter(JdbcTemplate db) {
@@ -39,6 +39,14 @@ class RouteAdapter implements RouteStore {
     } catch (DataIntegrityViolationException e) {
       throw new ContractException("CONFLICT");
     }
+  }
+
+  @Override
+  public List<UUID> findRouteIdsByDriver(UUID driverId) {
+    return db.query(
+        "SELECT id FROM routing.routes WHERE driver_id = ?",
+        (row, index) -> row.getObject("id", UUID.class),
+        driverId);
   }
 
   public RouteSnapshot get(UUID id, boolean lock) {

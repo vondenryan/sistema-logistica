@@ -126,13 +126,6 @@ public class JdbcDeliveryRepository implements DeliveryRepository {
   }
 
   @Override
-  public List<UUID> findAssignedRouteIds() {
-    return jdbcTemplate.query(
-        "SELECT DISTINCT route_id FROM deliveries.deliveries WHERE route_id IS NOT NULL",
-        (row, index) -> row.getObject("route_id", UUID.class));
-  }
-
-  @Override
   public List<Delivery> findByRouteIds(List<UUID> routeIds, int offset, int limit) {
     if (routeIds == null || routeIds.isEmpty()) {
       return Collections.emptyList();

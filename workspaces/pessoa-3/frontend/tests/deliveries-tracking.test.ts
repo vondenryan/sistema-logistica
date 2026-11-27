@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import TrackingView from '../src/TrackingView.vue'
 import DriverPanelView from '../src/DriverPanelView.vue'
 import DocumentsView from '../src/DocumentsView.vue'
-import { setDeliverySession } from '../src/api'
+import { clearDeliverySession, deliveryAuthenticated, setDeliverySession } from '../src/api'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -240,7 +240,7 @@ describe('DocumentsView', () => {
 
     expect(wrapper.text()).toContain(documentId)
     fetchMock.mockResolvedValueOnce(jsonResponse({ code: 'UNAUTHENTICATED' }, 401))
-    setDeliverySession('test-token')
+    setDeliverySession({ accessToken: 'test-token', expiresAt: new Date(Date.now() + 60_000).toISOString() })
     try {
       await wrapper.get('button.btn-success').trigger('click')
       await flushPromises()
@@ -248,8 +248,9 @@ describe('DocumentsView', () => {
       expect(path).toBe(`/api/v1/documents/${documentId}/pdf`)
       expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token')
       expect(wrapper.get('[role="alert"]').text()).not.toBe('')
+      expect(deliveryAuthenticated.value).toBe(false)
     } finally {
-      setDeliverySession('')
+      clearDeliverySession()
     }
   })
 

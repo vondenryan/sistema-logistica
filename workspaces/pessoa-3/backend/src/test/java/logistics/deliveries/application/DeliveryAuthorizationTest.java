@@ -43,7 +43,7 @@ class DeliveryAuthorizationTest {
     fakeRoutes = new FakeRouteSnapshotPort();
     fakeActor = new FakeCurrentActorPort();
 
-    service = new DeliveryService(repository, fakeOrders, fakeRoutes, fakeActor);
+    service = new DeliveryService(repository, fakeOrders, fakeRoutes, fakeRoutes, fakeActor);
 
     orderId = FakeOrderSnapshotPort.CANONICAL_ORDER_ID;
     driverId = FakeCurrentActorPort.DEFAULT_DRIVER_ID;
@@ -158,15 +158,6 @@ class DeliveryAuthorizationTest {
     @Override
     public List<Delivery> findByRouteId(UUID rId) {
       return map.values().stream().filter(d -> rId.equals(d.getRouteId())).toList();
-    }
-
-    @Override
-    public List<UUID> findAssignedRouteIds() {
-      return map.values().stream()
-          .map(Delivery::getRouteId)
-          .filter(java.util.Objects::nonNull)
-          .distinct()
-          .toList();
     }
 
     @Override

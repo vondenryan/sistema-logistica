@@ -45,7 +45,7 @@ class DeliveryServicePortTest {
     fakeActor = new FakeCurrentActorPort();
 
     deliveryService =
-        new DeliveryService(deliveryRepository, fakeOrders, fakeRoutes, fakeActor);
+        new DeliveryService(deliveryRepository, fakeOrders, fakeRoutes, fakeRoutes, fakeActor);
 
     canonicalOrderId = FakeOrderSnapshotPort.CANONICAL_ORDER_ID;
     canonicalRouteId = FakeRouteSnapshotPort.CANONICAL_ROUTE_ID;
@@ -244,15 +244,6 @@ class DeliveryServicePortTest {
     public List<Delivery> findByRouteId(UUID routeId) {
       return deliveries.values().stream()
           .filter(d -> routeId.equals(d.getRouteId()))
-          .toList();
-    }
-
-    @Override
-    public List<UUID> findAssignedRouteIds() {
-      return deliveries.values().stream()
-          .map(Delivery::getRouteId)
-          .filter(java.util.Objects::nonNull)
-          .distinct()
           .toList();
     }
 

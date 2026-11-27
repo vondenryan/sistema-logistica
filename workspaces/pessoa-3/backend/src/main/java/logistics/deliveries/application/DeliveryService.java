@@ -3,6 +3,7 @@ package logistics.deliveries.application;
 import contracts.v1.ActorContext;
 import contracts.v1.ContractException;
 import contracts.v1.CurrentActorPort;
+import contracts.v1.DriverRouteLookupPort;
 import contracts.v1.DeliveryCommandPort;
 import contracts.v1.DeliverySnapshot;
 import contracts.v1.DeliveryStatus;
@@ -31,6 +32,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
   private final DeliveryRepository deliveryRepository;
   private final OrderSnapshotPort orderSnapshotPort;
   private final RouteSnapshotPort routeSnapshotPort;
+  private final DriverRouteLookupPort driverRouteLookup;
   private final CurrentActorPort currentActorPort;
   private final NotificationService notificationService;
 
@@ -38,8 +40,9 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       DeliveryRepository deliveryRepository,
       OrderSnapshotPort orderSnapshotPort,
       RouteSnapshotPort routeSnapshotPort,
+      DriverRouteLookupPort driverRouteLookup,
       CurrentActorPort currentActorPort) {
-    this(deliveryRepository, orderSnapshotPort, routeSnapshotPort, currentActorPort, null);
+    this(deliveryRepository, orderSnapshotPort, routeSnapshotPort, driverRouteLookup, currentActorPort, null);
   }
 
   @Autowired
@@ -47,11 +50,13 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       DeliveryRepository deliveryRepository,
       OrderSnapshotPort orderSnapshotPort,
       RouteSnapshotPort routeSnapshotPort,
+      DriverRouteLookupPort driverRouteLookup,
       CurrentActorPort currentActorPort,
       NotificationService notificationService) {
     this.deliveryRepository = deliveryRepository;
     this.orderSnapshotPort = orderSnapshotPort;
     this.routeSnapshotPort = routeSnapshotPort;
+    this.driverRouteLookup = driverRouteLookup;
     this.currentActorPort = currentActorPort;
     this.notificationService = notificationService;
   }
@@ -310,9 +315,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       throw new ContractException("FORBIDDEN");
     }
 
-    List<UUID> driverRouteIds = deliveryRepository.findAssignedRouteIds().stream()
-        .filter(routeId -> belongsToDriver(routeId, actor.driverId()))
-        .toList();
+    List<UUID> driverRouteIds = driverRouteLookup.findRouteIdsByDriver(actor.driverId());
 
     if (driverRouteIds.isEmpty()) {
       return new DeliveryPage(List.of(), page, size, 0L);

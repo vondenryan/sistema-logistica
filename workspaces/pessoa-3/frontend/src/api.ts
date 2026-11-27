@@ -1,3 +1,5 @@
+import { computed, shallowRef } from 'vue'
+
 export type DeliveryStatus =
   | 'PENDING'
   | 'ASSIGNED'
@@ -87,17 +89,43 @@ async function parseResponse<T>(res: Response): Promise<T> {
   throw new ApiError(res.status, code, message)
 }
 
-let accessToken = ''
-
-export function setDeliverySession(token: string) {
-  accessToken = token
+interface DeliverySession {
+  accessToken: string
+  expiresAt: string
 }
 
-function authenticatedFetch(path: string, init?: RequestInit) {
-  if (!accessToken) return init ? fetch(path, init) : fetch(path)
+const session = shallowRef<DeliverySession | null>(null)
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
+
+export const deliveryAuthenticated = computed(() => session.value !== null)
+
+export function clearDeliverySession() {
+  clearTimeout(expiryTimer)
+  session.value = null
+}
+
+export function setDeliverySession(next: DeliverySession) {
+  const remaining = Date.parse(next.expiresAt) - Date.now()
+  if (!next.accessToken || !Number.isFinite(remaining) || remaining <= 0) {
+    throw new Error('Sessão expirada. Entre novamente.')
+  }
+  clearDeliverySession()
+  session.value = next
+  expiryTimer = setTimeout(clearDeliverySession, remaining)
+}
+
+async function authenticatedFetch(path: string, init?: RequestInit) {
+  const current = session.value
+  if (!current) return init ? fetch(path, init) : fetch(path)
+  if (Date.parse(current.expiresAt) <= Date.now()) {
+    clearDeliverySession()
+    throw new ApiError(401, 'UNAUTHENTICATED', 'Sessão expirada. Entre novamente.')
+  }
   const headers = new Headers(init?.headers)
-  headers.set('Authorization', `Bearer ${accessToken}`)
-  return fetch(path, { ...init, headers })
+  headers.set('Authorization', `Bearer ${current.accessToken}`)
+  const response = await fetch(path, { ...init, headers })
+  if (response.status === 401 && session.value === current) clearDeliverySession()
+  return response
 }
 
 export async function signIn(email: string, password: string) {
@@ -106,7 +134,7 @@ export async function signIn(email: string, password: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   })
-  return parseResponse<{ accessToken: string }>(response)
+  return parseResponse<DeliverySession>(response)
 }
 
 export const deliveriesApi = {

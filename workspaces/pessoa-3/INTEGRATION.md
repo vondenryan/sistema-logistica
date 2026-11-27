@@ -4,7 +4,7 @@ Este documento detalha as portas implementadas, consumidas e a estratégia de su
 
 ## Sprint 4 integrada
 
-O JAR de integração montado pelo workspace da Pessoa 2 usa as portas reais de pedidos, rotas e identidade da Pessoa 1. O painel consulta os IDs de rota das próprias entregas e verifica o motorista em cada snapshot v1. O rastreamento continua público, limitado a status e marcos. Os PDFs usam o frete cotado do pedido e mantêm o aviso de simulação acadêmica.
+O JAR de integração montado pelo workspace da Pessoa 2 usa as portas reais de pedidos, rotas e identidade da Pessoa 1. O painel consulta pelo motorista no módulo de roteamento pela porta `DriverRouteLookupPort`. A paginação e a contagem de entregas recebem apenas os IDs de rota retornados para esse motorista. O rastreamento continua público, limitado a status e marcos. Os PDFs usam o frete cotado do pedido e mantêm o aviso de simulação acadêmica.
 
 As migrações P3 são aplicadas no mesmo PostgreSQL com histórico próprio no schema `deliveries`. A outbox grava a intenção de envio na transação da entrega. O envio SMTP roda em outro momento e uma falha fica disponível para nova tentativa.
 
@@ -27,7 +27,7 @@ python3 workspaces/pessoa-3/scripts/smoke-integration.py
 
 O script usa `P2_SMOKE_URL` para a API (padrão 8080) e `P3_SMOKE_MAILPIT_URL` para a interface do Mailpit (padrão 8025). Para verificar a recuperação SMTP, inicie com Mailpit desligado e religue após o log da primeira falha SMTP. O script verifica a entrega concluída e aguarda as mensagens no Mailpit. Execute em um banco novo para repetir o cenário.
 
-No frontend, rode `npm ci` e `npm run dev -- --mode integration` em `workspaces/pessoa-3/frontend`. Use `sprint4-driver@example.invalid` para o painel do motorista e `sprint4-operator@example.invalid` para gerar e baixar documentos.
+No frontend, rode `npm ci` e `npm run dev -- --mode integration` em `workspaces/pessoa-3/frontend`. Para pré-visualizar o build integrado, use `npm run build:integration` e `npm run preview:integration` (API na porta 8080). Use `npm run build` e `npm run preview` para o modo autônomo (API na porta 8083). Cada modo grava o build em um diretório próprio. Use `sprint4-driver@example.invalid` para o painel do motorista e `sprint4-operator@example.invalid` para gerar e baixar documentos.
 
 ## 1. Portas Produzidas (`deliveries`, `notifications`, `documents`)
 

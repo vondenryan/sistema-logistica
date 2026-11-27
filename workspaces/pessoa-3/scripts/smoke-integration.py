@@ -82,12 +82,7 @@ def wait_for_mail(recipient):
     raise AssertionError("Mailpit não recebeu as cinco mensagens do pedido dentro do prazo.")
 
 
-def smoke():
-    operator = login("operator")
-    driver = login("driver")
-    other_driver = login("other-driver")
-    other_store = login("other-store")
-    recipient = f"cliente-{uuid4().hex}@example.invalid"
+def make_order(operator, recipient=None):
     _, order = request("/orders", token=operator, statuses=(201,), body={
         "storeId": core["STORE"], "originId": core["ORIGIN"],
         "destination": {
@@ -100,19 +95,41 @@ def smoke():
     order_id = order["orderId"]
     _, confirmed = request(f"/orders/{order_id}/confirm", token=operator, body={})
     assert confirmed["status"] == "CONFIRMED"
-    _, quote = request(f"/orders/{order_id}/freight-quote", token=operator, body={})
+    return order
+
+
+def assign_route(operator, order_id):
     _, route = request("/routes", token=operator, statuses=(201,), body={
         "originId": core["ORIGIN"], "orderIds": [order_id],
     })
     route_path = f"/routes/{route['routeId']}"
     _, assigned = request(route_path + "/assign", token=operator, body={})
-    assert assigned["driverId"] == core["OWN_DRIVER"]
     request(route_path + "/start", token=operator, body={})
+    return assigned["driverId"]
+
+
+def smoke():
+    operator = login("operator")
+    driver = login("driver")
+    other_driver = login("other-driver")
+    other_store = login("other-store")
+    recipient = f"cliente-{uuid4().hex}@example.invalid"
+    order = make_order(operator, recipient)
+    order_id = order["orderId"]
+    _, quote = request(f"/orders/{order_id}/freight-quote", token=operator, body={})
+    assert assign_route(operator, order_id) == core["OWN_DRIVER"]
+    _, other_page = request("/deliveries/my", token=other_driver)
+    assert other_page["totalItems"] == 0 and other_page["items"] == []
+
+    other_order_id = make_order(operator)["orderId"]
+    assert assign_route(operator, other_order_id) != core["OWN_DRIVER"]
+    _, other_page = request("/deliveries/my?size=1", token=other_driver)
+    assert other_page["totalItems"] == 1 and other_page["items"][0]["orderId"] == other_order_id
 
     _, own_page = request("/deliveries/my?size=1", token=driver)
     assert own_page["totalItems"] == 1 and own_page["items"][0]["orderId"] == order_id
-    _, other_page = request("/deliveries/my", token=other_driver)
-    assert other_page["totalItems"] == 0 and other_page["items"] == []
+    _, next_page = request("/deliveries/my?page=1&size=1", token=driver)
+    assert next_page["totalItems"] == 1 and next_page["items"] == []
     delivery_path = f"/deliveries/{own_page['items'][0]['deliveryId']}"
     patch = {"method": "PATCH"}
     request(delivery_path + "/status", token=other_driver, body={"status": "IN_TRANSIT"},
