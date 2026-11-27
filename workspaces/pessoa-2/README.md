@@ -112,4 +112,4 @@ A seleção usa somente motoristas e veículos ativos e sem reserva ativa, capac
 
 ## Demonstração isolada e integração
 
-O [guia de integração](INTEGRATION.md) descreve como executar as Sprints 1–3 com dados de demonstração e como iniciar o backend integrado da Sprint 4. O guia também registra os comandos e resultados da validação isolada da Sprint 3.
+O [guia de integração](INTEGRATION.md) descreve como executar as Sprints 1–3 com dados de demonstração e como iniciar o backend integrado da Sprint 4. O guia também registra os comandos e resultados da validação isolada da Sprint 3 e da integração da Sprint 4.

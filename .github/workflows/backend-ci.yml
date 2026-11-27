@@ -173,6 +173,7 @@ jobs:
           start_backend logistics_p2_ci
           seed logistics_p2_ci "$p2/scripts/seed-integration-actors.sql"
           python3 "$p2/scripts/smoke-integration.py"
+          npm --prefix "$p2/frontend" run build
           stop_backend
 
           if [[ -f "$p3/scripts/smoke-integration.py" ]]; then

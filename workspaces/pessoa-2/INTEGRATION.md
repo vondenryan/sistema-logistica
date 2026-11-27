@@ -108,3 +108,16 @@ Os testes de contrato usam fixtures JSON v1 e cobrem consulta de parceiro, seria
 Na entrega isolada da Sprint 3, a execução de `.\mvnw.cmd --batch-mode -DfailIfNoTests=true test` com PostgreSQL 16 registrou 91 testes aprovados, sem falhas, erros ou testes ignorados. A execução de `npm ci && npm test && npm run build` registrou 51 testes aprovados em 16 arquivos e concluiu o build do frontend.
 
 A suíte isolada cobre os snapshots e a serialização das portas `PartnerLookupPort`, `RouteSnapshotPort` e `FleetAssignmentPort`, além das rotas fixas do fake. Os testes com PostgreSQL exercitam atribuição, capacidade, idempotência, conflito, liberação e concorrência sem iniciar os serviços da Pessoa 1 ou da Pessoa 3. As verificações do PR são executadas pelo workflow `backend-ci.yml` no GitHub Actions.
+
+### Evidências — Sprint 4
+
+| Execução | Resultado |
+|---|---|
+| Local — suíte completa backend + PostgreSQL | `.\mvnw.cmd --batch-mode -DfailIfNoTests=true test` — **92 testes passaram** (0 falhas, 0 erros, 0 ignorados), incluindo `FleetAssignmentIntegrationTests` (15), `FleetContractJsonTests` (3), `FakeRouteSnapshotAdapterTests` (2) e demais. |
+| Local — build integrado (`-Pintegration`) | `.\mvnw.cmd --batch-mode -Pintegration package -DskipTests` — `BUILD SUCCESS`; JAR `pessoa2-backend-0.0.1-SNAPSHOT-integration.jar` gerado. |
+| Local — smoke test integrado | `python scripts/smoke-integration.py` contra `IntegratedApplication` em porta 18080 com banco `sprint4_smoke_db` descartável — **Smoke OK.** Rota própria persistida; concorrência sem reserva dupla. |
+| Local — Flyway reinicialização | Segunda inicialização do mesmo JAR contra o mesmo banco — validação limpa do histórico, sem re-aplicação de migrações. |
+| Local — frontend | `npm ci && npm test && npm run build` — **16 arquivos / 51 testes passaram**; build aprovado. |
+| CI — workflow `backend-ci.yml` | Compila o perfil `integration` e executa os smokes de P2/P3 com bancos descartáveis separados no PostgreSQL 16. Também compila o frontend P2 após o smoke. |
+
+Após atualizar a branch para a `develop` de `18acff2`, o JAR integrado e os dois smokes passaram em PostgreSQL 16 descartável. O smoke do P2 verificou origem e frota reais, autorização por JWT, uma única reserva na disputa por um par e rastreamento público de código existente (200) e desconhecido (404). A rota em `IN_PROGRESS` mantém a entrega em `ASSIGNED` até o comando de trânsito da entrega. O smoke do P3 verificou a autorização dos motoristas, a entrega concluída, os PDFs acadêmicos e cinco mensagens recebidas no Mailpit. O teste de frete do P3 usa a resposta OSRM controlada pelo smoke.

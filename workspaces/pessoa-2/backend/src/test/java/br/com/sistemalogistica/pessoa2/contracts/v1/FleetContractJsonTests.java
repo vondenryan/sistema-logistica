@@ -1,8 +1,5 @@
 package br.com.sistemalogistica.pessoa2.contracts.v1;
 
-import contracts.v1.*;
-import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -12,19 +9,23 @@ import static org.mockito.Mockito.when;
 
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.util.UUID;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import contracts.v1.AddressSnapshot;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.AssignmentSnapshot;
+import contracts.v1.FleetAssignmentPort;
+import contracts.v1.FleetType;
 import contracts.v1.OriginSnapshot;
 import contracts.v1.OriginType;
 import contracts.v1.StoreSnapshot;
 import contracts.v1.PartnerLookupPort;
 import br.com.sistemalogistica.pessoa2.fleet.DevFleetAssignmentRequest;
+import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
 import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentRepository;
 import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentService;
 import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentTransactionService;
