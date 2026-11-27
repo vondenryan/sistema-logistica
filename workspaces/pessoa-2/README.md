@@ -63,6 +63,10 @@ Somente `ADMIN` e `OPERATOR` podem listar, criar ou atualizar fornecedores. `STO
 
 **Pontos em aberto/decisões locais:** o contrato não define como `active` aparece nas respostas de fornecedor, portanto esta implementação não expõe `active`; a inativação com `{"active":false}` fica interna e não exclui fisicamente nem deixa o fornecedor invisível. O PATCH não consegue apagar `contactEmail`: `contactEmail:null` é rejeitado com 400 e o campo omitido preserva o valor atual. IDs inválidos em GET/PATCH retornam 400 `VALIDATION_ERROR`.
 
+O adaptador de parceiros usa `contracts.v1.PartnerLookupPort` e converte as coordenadas para `BigDecimal` na interface entre módulos. Os workspaces P1 e P2 mantêm cópias idênticas dos tipos da porta e da verificação de contrato para continuar executando de forma independente. O CI compara essas cópias e executa a verificação tanto no fake do P1 quanto no adaptador PostgreSQL do P2.
+
+O CI provisiona PostgreSQL 16 para os testes do P2 com os valores locais padrão do workspace. A API de origens valida latitude entre −90 e 90 e longitude entre −180 e 180 em POST e PATCH. Os erros com detalhes de campo usam `details[].field` e `details[].reason`.
+
 ## Cadastros de frota
 
 O backend expõe `GET /api/v1/carriers`, `GET /api/v1/carriers/{carrierId}`, `POST /api/v1/carriers` e `PATCH /api/v1/carriers/{carrierId}`; as mesmas operações existem em `/api/v1/drivers` e `/api/v1/vehicles`. As listagens usam `page=0` e `size=20` por padrão, com tamanho de 1 a 100 e ordenação estável por criação e ID. `active` aparece sempre nas respostas; `carrierId` é omitido quando não há vínculo. UUID inválido em GET/PATCH retorna 400 `VALIDATION_ERROR`.

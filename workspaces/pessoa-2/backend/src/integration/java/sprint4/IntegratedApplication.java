@@ -3,16 +3,12 @@ package sprint4;
 import br.com.sistemalogistica.pessoa2.Pessoa2BackendApplication;
 import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentService;
 import br.com.sistemalogistica.pessoa2.fleet.RouteCapacityValidator;
-import br.com.sistemalogistica.pessoa2.partners.PartnerLookupAdapter;
 import contracts.v1.ContractException;
 import contracts.v1.CurrentActorPort;
 import contracts.v1.OrderSnapshot;
 import contracts.v1.OrderSnapshotPort;
 import contracts.v1.OrderStatus;
-import contracts.v1.OriginSnapshot;
-import contracts.v1.PartnerLookupPort;
 import contracts.v1.RouteSnapshotPort;
-import contracts.v1.StoreSnapshot;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +27,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -52,6 +54,17 @@ public class IntegratedApplication {
         SpringApplication app = new SpringApplication(IntegratedApplication.class);
         app.setAdditionalProfiles("integration");
         app.run(args);
+    }
+
+    @Bean
+    @Order(1)
+    SecurityFilterChain publicTracking(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher(PathPatternRequestMatcher.withDefaults()
+                .matcher(HttpMethod.GET, "/api/v1/tracking/{code}"))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+            .build();
     }
 
     @Bean
@@ -98,22 +111,6 @@ public class IntegratedApplication {
     @Primary
     RouteSnapshotPort routeLookup(ObjectProvider<RouteService> producer) {
         return id -> producer.getObject().getById(id);
-    }
-
-    @Bean
-    @Primary
-    PartnerLookupPort partnerLookup(PartnerLookupAdapter partners) {
-        return new PartnerLookupPort() {
-            @Override
-            public OriginSnapshot getOrigin(UUID id) {
-                return IntegratedPorts.call(() -> partners.getOrigin(id));
-            }
-
-            @Override
-            public StoreSnapshot getStore(UUID id) {
-                return IntegratedPorts.call(() -> partners.getStore(id));
-            }
-        };
     }
 
     @Bean
