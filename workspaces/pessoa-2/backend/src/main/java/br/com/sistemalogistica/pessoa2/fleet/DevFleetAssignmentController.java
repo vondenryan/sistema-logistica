@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentSnapshot;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.AssignmentSnapshot;
 import br.com.sistemalogistica.pessoa2.security.CurrentActorPort;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 

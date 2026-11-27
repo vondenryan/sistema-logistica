@@ -2,25 +2,28 @@ package br.com.sistemalogistica.pessoa2.fleet;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetAssignmentPort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetReleasePort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReceipt;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.RouteSnapshotPort;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.AssignmentSnapshot;
+import contracts.v1.FleetAssignmentPort;
+import contracts.v1.FleetReleasePort;
+import contracts.v1.FleetType;
+import contracts.v1.ReleaseReceipt;
+import contracts.v1.ReleaseRequest;
+import contracts.v1.RouteSnapshotPort;
 import br.com.sistemalogistica.pessoa2.security.CurrentActorPort;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ContractException;
 
 @Service
 public class FleetAssignmentService implements FleetAssignmentPort, FleetReleasePort {
 
+	private static final int MAX_RESERVATION_ATTEMPTS = 5;
 	private static final String ROUTE_UNIQUE_INDEX = "ux_fleet_assignments_route_id";
 	private static final String ACTIVE_DRIVER_INDEX = "ux_fleet_assignments_active_driver";
 	private static final String ACTIVE_VEHICLE_INDEX = "ux_fleet_assignments_active_vehicle";
@@ -48,26 +51,20 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 	@Override
 	public AssignmentSnapshot assign(AssignmentRequest request) {
 		validateAssignmentRequest(request);
-		FleetAssignment previous = assignmentRepository.findByRouteId(request.routeId()).orElse(null);
-		if (previous != null) {
-			return idempotentResult(previous, request);
-		}
-
-		try {
-			return transactionService.reserve(request);
-		} catch (DataIntegrityViolationException exception) {
-			FleetAssignment concurrentResult = assignmentRepository.findByRouteId(request.routeId()).orElse(null);
-			if (concurrentResult != null) {
-				return idempotentResult(concurrentResult, request);
+		for (int attempt = 1; ; attempt++) {
+			try {
+				return transactionService.reserve(request);
+			} catch (DataIntegrityViolationException exception) {
+				if (!FleetSupport.isConstraintViolation(exception, ROUTE_UNIQUE_INDEX)
+						&& !FleetSupport.isConstraintViolation(exception, ACTIVE_DRIVER_INDEX)
+						&& !FleetSupport.isConstraintViolation(exception, ACTIVE_VEHICLE_INDEX)) {
+					throw exception;
+				}
+				if (attempt == MAX_RESERVATION_ATTEMPTS) {
+					throw new ContractException("CONFLICT");
+				}
+				// The failed reservation has rolled back. Select again in a fresh transaction.
 			}
-			if (FleetSupport.isConstraintViolation(exception, ACTIVE_DRIVER_INDEX)
-					|| FleetSupport.isConstraintViolation(exception, ACTIVE_VEHICLE_INDEX)) {
-				throw noEligible();
-			}
-			if (FleetSupport.isConstraintViolation(exception, ROUTE_UNIQUE_INDEX)) {
-				throw new ContractException("CONFLICT", "The route already has a fleet assignment.");
-			}
-			throw exception;
 		}
 	}
 
@@ -109,64 +106,50 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 
 	private static void validateAssignmentRequest(AssignmentRequest request) {
 		if (request == null) {
-			throw ContractException.validation("request", "Must not be null.");
+			throw validation("request", "MUST_NOT_BE_NULL");
 		}
 		if (request.routeId() == null) {
-			throw ContractException.validation("routeId", "Must not be null.");
+			throw validation("routeId", "MUST_NOT_BE_NULL");
 		}
 		if (request.originId() == null) {
-			throw ContractException.validation("originId", "Must not be null.");
+			throw validation("originId", "MUST_NOT_BE_NULL");
 		}
 		BigDecimal capacity = request.requiredCapacityKg();
 		if (capacity == null || capacity.signum() <= 0) {
-			throw ContractException.validation("requiredCapacityKg", "Must be greater than zero.");
+			throw validation("requiredCapacityKg", "MUST_BE_POSITIVE");
 		}
 		if (capacity.scale() > 3 || capacity.precision() - capacity.scale() > 9) {
-			throw ContractException.validation(
+			throw validation(
 					"requiredCapacityKg",
-					"Must fit decimal(12,3).");
+					"MUST_BE_IN_RANGE");
 		}
+	}
+
+	private static ContractException validation(String field, String reason) {
+		return new ContractException("VALIDATION_ERROR", List.of(Map.of("field", field, "reason", reason)));
 	}
 
 	private static void validateReleaseRequest(ReleaseRequest request) {
 		if (request == null) {
-			throw ContractException.validation("request", "Must not be null.");
+			throw validation("request", "MUST_NOT_BE_NULL");
 		}
 		if (request.routeId() == null) {
-			throw ContractException.validation("routeId", "Must not be null.");
+			throw validation("routeId", "MUST_NOT_BE_NULL");
 		}
 		if (request.eventId() == null) {
-			throw ContractException.validation("eventId", "Must not be null.");
+			throw validation("eventId", "MUST_NOT_BE_NULL");
 		}
 		if (request.reason() == null) {
-			throw ContractException.validation("reason", "Must not be null.");
+			throw validation("reason", "MUST_NOT_BE_NULL");
 		}
-	}
-
-	private static AssignmentSnapshot idempotentResult(FleetAssignment assignment, AssignmentRequest request) {
-		if (!assignment.getOriginId().equals(request.originId())
-				|| assignment.getRequiredCapacityKg().compareTo(request.requiredCapacityKg()) != 0) {
-			throw idempotencyConflict();
-		}
-		return new AssignmentSnapshot(
-				assignment.getAssignmentId(),
-				assignment.getRouteId(),
-				assignment.getDriverId(),
-				assignment.getVehicleId(),
-				assignment.getCarrierId(),
-				assignment.getFleetType());
-	}
-
-	private static ContractException noEligible() {
-		return new ContractException("NO_ELIGIBLE_RESOURCE", "No eligible driver and vehicle are available.");
 	}
 
 	private static ContractException idempotencyConflict() {
-		return new ContractException("IDEMPOTENCY_CONFLICT", "The route was already assigned with a different request.");
+		return new ContractException("IDEMPOTENCY_CONFLICT");
 	}
 
 	private static ContractException notFound() {
-		return new ContractException("NOT_FOUND", "Fleet assignment was not found.");
+		return new ContractException("NOT_FOUND");
 	}
 
 }
