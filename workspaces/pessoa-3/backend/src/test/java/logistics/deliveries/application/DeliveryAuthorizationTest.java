@@ -161,6 +161,15 @@ class DeliveryAuthorizationTest {
     }
 
     @Override
+    public List<UUID> findAssignedRouteIds() {
+      return map.values().stream()
+          .map(Delivery::getRouteId)
+          .filter(java.util.Objects::nonNull)
+          .distinct()
+          .toList();
+    }
+
+    @Override
     public List<Delivery> findByRouteIds(List<UUID> rIds, int off, int lim) {
       return map.values().stream()
           .filter(d -> rIds.contains(d.getRouteId()))

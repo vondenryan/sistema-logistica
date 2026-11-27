@@ -87,14 +87,36 @@ async function parseResponse<T>(res: Response): Promise<T> {
   throw new ApiError(res.status, code, message)
 }
 
+let accessToken = ''
+
+export function setDeliverySession(token: string) {
+  accessToken = token
+}
+
+function authenticatedFetch(path: string, init?: RequestInit) {
+  if (!accessToken) return init ? fetch(path, init) : fetch(path)
+  const headers = new Headers(init?.headers)
+  headers.set('Authorization', `Bearer ${accessToken}`)
+  return fetch(path, { ...init, headers })
+}
+
+export async function signIn(email: string, password: string) {
+  const response = await fetch('/api/v1/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  return parseResponse<{ accessToken: string }>(response)
+}
+
 export const deliveriesApi = {
   async listMyDeliveries(page = 0, size = 20): Promise<DeliveryPage> {
-    const res = await fetch(`/api/v1/deliveries/my?page=${page}&size=${size}`)
+    const res = await authenticatedFetch(`/api/v1/deliveries/my?page=${page}&size=${size}`)
     return parseResponse<DeliveryPage>(res)
   },
 
   async getEvents(deliveryId: string): Promise<DeliveryEvent[]> {
-    const res = await fetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/events`)
+    const res = await authenticatedFetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/events`)
     return parseResponse<DeliveryEvent[]>(res)
   },
 
@@ -107,7 +129,7 @@ export const deliveriesApi = {
     if (reason !== undefined && reason.trim().length > 0) {
       payload.reason = reason.trim()
     }
-    const res = await fetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/status`, {
+    const res = await authenticatedFetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -116,7 +138,7 @@ export const deliveriesApi = {
   },
 
   async completeDelivery(deliveryId: string, receiverName: string): Promise<DeliverySnapshot> {
-    const res = await fetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/complete`, {
+    const res = await authenticatedFetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ receiverName: receiverName.trim() })
@@ -133,7 +155,7 @@ export const deliveriesApi = {
     orderId: string,
     documentType: DocumentType
   ): Promise<DocumentReceipt> {
-    const res = await fetch('/api/v1/documents', {
+    const res = await authenticatedFetch('/api/v1/documents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId: orderId.trim(), documentType })
@@ -141,7 +163,9 @@ export const deliveriesApi = {
     return parseResponse<DocumentReceipt>(res)
   },
 
-  documentPdfUrl(documentId: string): string {
-    return `/api/v1/documents/${encodeURIComponent(documentId)}/pdf`
+  async documentPdf(documentId: string): Promise<Blob> {
+    const response = await authenticatedFetch(`/api/v1/documents/${encodeURIComponent(documentId)}/pdf`)
+    if (!response.ok) await parseResponse<never>(response)
+    return response.blob()
   }
 }

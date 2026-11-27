@@ -248,6 +248,15 @@ class DeliveryServicePortTest {
     }
 
     @Override
+    public List<UUID> findAssignedRouteIds() {
+      return deliveries.values().stream()
+          .map(Delivery::getRouteId)
+          .filter(java.util.Objects::nonNull)
+          .distinct()
+          .toList();
+    }
+
+    @Override
     public List<Delivery> findByRouteIds(List<UUID> routeIds, int offset, int limit) {
       return deliveries.values().stream()
           .filter(d -> routeIds.contains(d.getRouteId()))

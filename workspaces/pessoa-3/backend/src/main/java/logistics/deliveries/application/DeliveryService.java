@@ -14,7 +14,6 @@ import contracts.v1.OrderStatus;
 import contracts.v1.Role;
 import contracts.v1.RouteSnapshot;
 import contracts.v1.RouteSnapshotPort;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -22,7 +21,6 @@ import java.util.UUID;
 import logistics.deliveries.domain.Delivery;
 import logistics.deliveries.domain.DeliveryEvent;
 import logistics.deliveries.domain.DeliveryRepository;
-import logistics.fakes.FakeRouteSnapshotPort;
 import logistics.notifications.application.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -312,16 +310,12 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       throw new ContractException("FORBIDDEN");
     }
 
-    List<UUID> driverRouteIds = List.of();
-    if (routeSnapshotPort instanceof FakeRouteSnapshotPort fakeRoutes) {
-      driverRouteIds =
-          fakeRoutes.findByDriverId(actor.driverId()).stream()
-              .map(RouteSnapshot::routeId)
-              .toList();
-    }
+    List<UUID> driverRouteIds = deliveryRepository.findAssignedRouteIds().stream()
+        .filter(routeId -> belongsToDriver(routeId, actor.driverId()))
+        .toList();
 
     if (driverRouteIds.isEmpty()) {
-      return new DeliveryPage(Collections.emptyList(), page, size, 0L);
+      return new DeliveryPage(List.of(), page, size, 0L);
     }
 
     int offset = (int) ((long) page * size);
@@ -357,6 +351,18 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
     return deliveryRepository.findEventsByDeliveryId(deliveryId);
   }
 
+  private boolean belongsToDriver(UUID routeId, UUID driverId) {
+    try {
+      RouteSnapshot route = routeSnapshotPort.getById(routeId);
+      return route != null && driverId.equals(route.driverId());
+    } catch (ContractException e) {
+      if ("NOT_FOUND".equals(e.code())) {
+        return false;
+      }
+      throw e;
+    }
+  }
+
   private void validateActorAccess(ActorContext actor, Delivery delivery) {
     if (actor.role() == Role.ADMIN || actor.role() == Role.OPERATOR) {
       return; // Full access
@@ -366,8 +372,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       if (actor.driverId() == null || delivery.getRouteId() == null) {
         throw new ContractException("FORBIDDEN");
       }
-      RouteSnapshot route = routeSnapshotPort.getById(delivery.getRouteId());
-      if (route == null || !Objects.equals(route.driverId(), actor.driverId())) {
+      if (!belongsToDriver(delivery.getRouteId(), actor.driverId())) {
         throw new ContractException("FORBIDDEN");
       }
       return;

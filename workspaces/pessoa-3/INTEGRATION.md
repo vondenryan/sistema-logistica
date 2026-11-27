@@ -2,6 +2,33 @@
 
 Este documento detalha as portas implementadas, consumidas e a estratégia de substituição de fakes para a integração na Sprint 4.
 
+## Sprint 4 integrada
+
+O JAR de integração montado pelo workspace da Pessoa 2 usa as portas reais de pedidos, rotas e identidade da Pessoa 1. O painel consulta os IDs de rota das próprias entregas e verifica o motorista em cada snapshot v1. O rastreamento continua público, limitado a status e marcos. Os PDFs usam o frete cotado do pedido e mantêm o aviso de simulação acadêmica.
+
+As migrações P3 são aplicadas no mesmo PostgreSQL com histórico próprio no schema `deliveries`. A outbox grava a intenção de envio na transação da entrega. O envio SMTP roda em outro momento e uma falha fica disponível para nova tentativa.
+
+### Smoke ponta a ponta
+
+Use um PostgreSQL descartável, Mailpit e `pdftotext` (Poppler). Na raiz do repositório, exporte as configurações de banco e JWT conforme `workspaces/pessoa-2/INTEGRATION.md`. Para este teste, configure `SPRING_PROFILES_ACTIVE=integration-demo`, `OSRM_BASE_URL=http://127.0.0.1:19090` e uma `FREIGHT_TARIFF_PER_KM` fictícia positiva. O smoke inicia um servidor local de respostas OSRM na porta 19090. Configure `MAIL_HOST` e `MAIL_PORT` para o SMTP do Mailpit.
+
+```bash
+mvn -f workspaces/pessoa-2/backend/pom.xml -Pintegration clean package -DskipTests
+java -jar workspaces/pessoa-2/backend/target/*-integration.jar
+```
+
+Com o backend ativo, use uma senha descartável em `P2_SMOKE_PASSWORD` e configure o cliente `psql` para o mesmo banco:
+
+```bash
+psql -f workspaces/pessoa-2/scripts/seed-integration-actors.sql
+psql -f workspaces/pessoa-3/scripts/seed-smoke-drivers.sql
+python3 workspaces/pessoa-3/scripts/smoke-integration.py
+```
+
+O script usa `P2_SMOKE_URL` para a API (padrão 8080) e `P3_SMOKE_MAILPIT_URL` para a interface do Mailpit (padrão 8025). Para verificar a recuperação SMTP, inicie com Mailpit desligado e religue após o log da primeira falha SMTP. O script verifica a entrega concluída e aguarda as mensagens no Mailpit. Execute em um banco novo para repetir o cenário.
+
+No frontend, rode `npm ci` e `npm run dev -- --mode integration` em `workspaces/pessoa-3/frontend`. Use `sprint4-driver@example.invalid` para o painel do motorista e `sprint4-operator@example.invalid` para gerar e baixar documentos.
+
 ## 1. Portas Produzidas (`deliveries`, `notifications`, `documents`)
 
 | Porta | Interface Java | Status na Sprint 1–3 | Substituição na Sprint 4 |

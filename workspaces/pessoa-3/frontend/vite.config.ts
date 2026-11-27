@@ -1,12 +1,12 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8083',
+        target: mode === 'integration' ? 'http://localhost:8080' : 'http://localhost:8083',
         changeOrigin: true
       }
     }
@@ -14,4 +14,4 @@ export default defineConfig({
   test: {
     environment: 'jsdom'
   }
-})
+}))
