@@ -1,3 +1,5 @@
+import { computed, shallowRef } from 'vue'
+
 export type DeliveryStatus =
   | 'PENDING'
   | 'ASSIGNED'
@@ -87,14 +89,62 @@ async function parseResponse<T>(res: Response): Promise<T> {
   throw new ApiError(res.status, code, message)
 }
 
+interface DeliverySession {
+  accessToken: string
+  expiresAt: string
+}
+
+const session = shallowRef<DeliverySession | null>(null)
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
+
+export const deliveryAuthenticated = computed(() => session.value !== null)
+
+export function clearDeliverySession() {
+  clearTimeout(expiryTimer)
+  session.value = null
+}
+
+export function setDeliverySession(next: DeliverySession) {
+  const remaining = Date.parse(next.expiresAt) - Date.now()
+  if (!next.accessToken || !Number.isFinite(remaining) || remaining <= 0) {
+    throw new Error('Sessão expirada. Entre novamente.')
+  }
+  clearDeliverySession()
+  session.value = next
+  expiryTimer = setTimeout(clearDeliverySession, remaining)
+}
+
+async function authenticatedFetch(path: string, init?: RequestInit) {
+  const current = session.value
+  if (!current) return init ? fetch(path, init) : fetch(path)
+  if (Date.parse(current.expiresAt) <= Date.now()) {
+    clearDeliverySession()
+    throw new ApiError(401, 'UNAUTHENTICATED', 'Sessão expirada. Entre novamente.')
+  }
+  const headers = new Headers(init?.headers)
+  headers.set('Authorization', `Bearer ${current.accessToken}`)
+  const response = await fetch(path, { ...init, headers })
+  if (response.status === 401 && session.value === current) clearDeliverySession()
+  return response
+}
+
+export async function signIn(email: string, password: string) {
+  const response = await fetch('/api/v1/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  return parseResponse<DeliverySession>(response)
+}
+
 export const deliveriesApi = {
   async listMyDeliveries(page = 0, size = 20): Promise<DeliveryPage> {
-    const res = await fetch(`/api/v1/deliveries/my?page=${page}&size=${size}`)
+    const res = await authenticatedFetch(`/api/v1/deliveries/my?page=${page}&size=${size}`)
     return parseResponse<DeliveryPage>(res)
   },
 
   async getEvents(deliveryId: string): Promise<DeliveryEvent[]> {
-    const res = await fetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/events`)
+    const res = await authenticatedFetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/events`)
     return parseResponse<DeliveryEvent[]>(res)
   },
 
@@ -107,7 +157,7 @@ export const deliveriesApi = {
     if (reason !== undefined && reason.trim().length > 0) {
       payload.reason = reason.trim()
     }
-    const res = await fetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/status`, {
+    const res = await authenticatedFetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -116,7 +166,7 @@ export const deliveriesApi = {
   },
 
   async completeDelivery(deliveryId: string, receiverName: string): Promise<DeliverySnapshot> {
-    const res = await fetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/complete`, {
+    const res = await authenticatedFetch(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ receiverName: receiverName.trim() })
@@ -133,7 +183,7 @@ export const deliveriesApi = {
     orderId: string,
     documentType: DocumentType
   ): Promise<DocumentReceipt> {
-    const res = await fetch('/api/v1/documents', {
+    const res = await authenticatedFetch('/api/v1/documents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId: orderId.trim(), documentType })
@@ -141,7 +191,9 @@ export const deliveriesApi = {
     return parseResponse<DocumentReceipt>(res)
   },
 
-  documentPdfUrl(documentId: string): string {
-    return `/api/v1/documents/${encodeURIComponent(documentId)}/pdf`
+  async documentPdf(documentId: string): Promise<Blob> {
+    const response = await authenticatedFetch(`/api/v1/documents/${encodeURIComponent(documentId)}/pdf`)
+    if (!response.ok) await parseResponse<never>(response)
+    return response.blob()
   }
 }

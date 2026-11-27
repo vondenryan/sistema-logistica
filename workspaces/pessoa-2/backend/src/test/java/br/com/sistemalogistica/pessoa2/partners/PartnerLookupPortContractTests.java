@@ -36,9 +36,6 @@ class PartnerLookupPortContractTests {
 
 	private static final br.com.sistemalogistica.pessoa2.origins.AddressSnapshot ORIGIN_ADDRESS =
 			new br.com.sistemalogistica.pessoa2.origins.AddressSnapshot(
-<<<<<<< HEAD
-					"Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", -26.48, -49.07);
-=======
 					"Rua Exemplo, 100",
 					null,
 					"Cidade Fictícia",
@@ -47,7 +44,6 @@ class PartnerLookupPortContractTests {
 					"BR",
 					-26.48,
 					-49.07);
->>>>>>> origin/feat/p2-sprint-4
 	private static final AddressSnapshot CONTRACT_ADDRESS =
 			new AddressSnapshot("Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", new BigDecimal("-26.48"), new BigDecimal("-49.07"));
 
@@ -84,11 +80,8 @@ class PartnerLookupPortContractTests {
 				CONTRACT_ADDRESS,
 				true), originSnapshot);
 		assertEquals(new StoreSnapshot(store.id(), true, store.name()), storeSnapshot);
-<<<<<<< HEAD
-=======
 		assertEquals(store.id(), originSnapshot.storeId());
 		assertEquals(originSnapshot.storeId(), storeSnapshot.id());
->>>>>>> origin/feat/p2-sprint-4
 		assertDoesNotExposeJpaEntities(originSnapshot);
 		assertDoesNotExposeJpaEntities(storeSnapshot);
 	}
@@ -99,15 +92,10 @@ class PartnerLookupPortContractTests {
 		var origin = originService.create(
 				new CreateOriginRequest(OriginType.STORE, store.id(), ORIGIN_ADDRESS, false));
 
-<<<<<<< HEAD
-		assertFalse(partnerLookupPort.getOrigin(origin.id()).active());
-		assertFalse(partnerLookupPort.getStore(store.id()).active());
-=======
 		OriginSnapshot originSnapshot = partnerLookupPort.getOrigin(origin.id());
 		assertFalse(originSnapshot.active());
 		assertFalse(partnerLookupPort.getStore(store.id()).active());
 		assertEquals(store.id(), originSnapshot.storeId());
->>>>>>> origin/feat/p2-sprint-4
 	}
 
 	@Test

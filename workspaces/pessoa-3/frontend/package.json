@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5175",
     "build": "vue-tsc --noEmit && vite build",
+    "build:integration": "npm run build -- --mode integration",
+    "preview": "vite preview",
+    "preview:integration": "vite preview --mode integration",
     "test": "vitest run"
   },
   "dependencies": {

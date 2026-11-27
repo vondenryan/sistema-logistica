@@ -28,35 +28,21 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-<<<<<<< HEAD
-=======
 import org.springframework.boot.test.context.SpringBootTest;
->>>>>>> origin/feat/p2-sprint-4
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-<<<<<<< HEAD
-import org.springframework.test.web.servlet.MockMvc;
-
-import br.com.sistemalogistica.pessoa2.security.Role;
-=======
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
->>>>>>> origin/feat/p2-sprint-4
 import contracts.v1.AssignmentRequest;
 import contracts.v1.AssignmentSnapshot;
-import contracts.v1.ContractException;
 import contracts.v1.FleetType;
 import contracts.v1.ReleaseReason;
 import contracts.v1.ReleaseReceipt;
 import contracts.v1.ReleaseRequest;
-<<<<<<< HEAD
-=======
 import br.com.sistemalogistica.pessoa2.security.Role;
 import contracts.v1.ContractException;
->>>>>>> origin/feat/p2-sprint-4
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -91,11 +77,7 @@ class FleetAssignmentIntegrationTests {
 	@Autowired
 	private DriverRepository driverRepository;
 
-<<<<<<< HEAD
-	@Autowired
-=======
 	@MockitoSpyBean
->>>>>>> origin/feat/p2-sprint-4
 	private VehicleRepository vehicleRepository;
 
 	@Autowired
@@ -121,12 +103,6 @@ class FleetAssignmentIntegrationTests {
 		vehicleRepository.deleteAllById(concurrencyVehicles);
 		driverRepository.deleteAllById(concurrencyDrivers);
 		carrierRepository.deleteAllById(concurrencyCarriers);
-<<<<<<< HEAD
-		concurrencyVehicles.clear();
-		concurrencyDrivers.clear();
-		concurrencyCarriers.clear();
-=======
->>>>>>> origin/feat/p2-sprint-4
 	}
 
 	@Test
@@ -364,11 +340,7 @@ class FleetAssignmentIntegrationTests {
 	}
 
 	@Test
-<<<<<<< HEAD
-	void concurrentRoutesReserveDistinctPairsWithoutConflict() throws Exception {
-=======
 	void concurrentRoutesReserveDistinctPairs() throws Exception {
->>>>>>> origin/feat/p2-sprint-4
 		createSingleThirdPartyPair();
 		createSingleThirdPartyPair();
 

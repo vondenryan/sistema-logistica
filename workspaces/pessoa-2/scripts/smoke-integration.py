@@ -52,6 +52,7 @@ def main():
     request(origin_path, token="invalid-token", statuses=(401,), code="UNAUTHENTICATED")
     request(origin_path, token=other_store, statuses=(404,), code="NOT_FOUND")
     request("/vehicles", statuses=(401,), code="UNAUTHENTICATED")
+    request("/deliveries/my", statuses=(401,), code="UNAUTHENTICATED")
     request("/vehicles", token=other_store, statuses=(403,), code="FORBIDDEN")
     _, origin = request(origin_path, token=admin)
     assert origin["storeId"] == STORE and origin["active"]
@@ -89,7 +90,7 @@ def main():
             "originId": new_origin["id"], "orderIds": [order_id],
         })
         assert route["status"] == "PLANNED"
-        return route["routeId"]
+        return route["routeId"], tracking_path
 
     def assign(route_id, statuses=(200,), token=admin):
         return request(f"/routes/{route_id}/assign", token=token, body={}, statuses=statuses)
@@ -100,7 +101,7 @@ def main():
     request(f"/routes/{uuid4()}/assign", token=admin, body={}, statuses=(404,), code="NOT_FOUND")
     request(f"/tracking/TRK-{uuid4().hex}", statuses=(404,), code="NOT_FOUND")
     request("/tracking/extra/segments", statuses=(401,), code="UNAUTHENTICATED")
-    route = make_route("40.000")
+    route, tracking_path = make_route("40.000")
     assign(route, (403,), token=other_store)
     _, assigned = assign(route)
     assert assigned["status"] == "ASSIGNED"
@@ -112,9 +113,12 @@ def main():
     assert own == get_assignment(route)
     _, started = request(f"/routes/{route}/start", token=admin, body={})
     assert started["status"] == "IN_PROGRESS"
+    _, public = request(tracking_path)
+    assert set(public) == {"status", "milestones"} and public["status"] == "ASSIGNED"
+    assert all(set(event) == {"status", "at"} for event in public["milestones"])
 
     # Only one of the demo vehicles can carry 1,500 kg.
-    contenders = [make_route("1500.000"), make_route("1500.000")]
+    contenders = [make_route("1500.000")[0] for _ in range(2)]
     barrier = Barrier(len(contenders), timeout=10)
 
     def assign_together(route_id):

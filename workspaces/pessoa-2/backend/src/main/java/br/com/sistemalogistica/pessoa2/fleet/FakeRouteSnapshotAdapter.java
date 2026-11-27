@@ -14,11 +14,7 @@ import org.springframework.stereotype.Component;
 import contracts.v1.ContractException;
 
 @Component
-<<<<<<< HEAD
-@Profile({"dev & !integration", "test"})
-=======
 @Profile("(dev | test) & !integration")
->>>>>>> origin/feat/p2-sprint-4
 public class FakeRouteSnapshotAdapter implements RouteSnapshotPort {
 
 	public static final UUID ROUTE_1_ID = UUID.fromString("33333333-3333-4333-8333-333333333333");

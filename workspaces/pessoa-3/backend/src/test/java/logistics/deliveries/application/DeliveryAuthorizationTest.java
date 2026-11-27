@@ -43,7 +43,7 @@ class DeliveryAuthorizationTest {
     fakeRoutes = new FakeRouteSnapshotPort();
     fakeActor = new FakeCurrentActorPort();
 
-    service = new DeliveryService(repository, fakeOrders, fakeRoutes, fakeActor);
+    service = new DeliveryService(repository, fakeOrders, fakeRoutes, fakeRoutes, fakeActor);
 
     orderId = FakeOrderSnapshotPort.CANONICAL_ORDER_ID;
     driverId = FakeCurrentActorPort.DEFAULT_DRIVER_ID;
