@@ -236,6 +236,11 @@ class DeliveryServicePortTest {
     }
 
     @Override
+    public Optional<Delivery> lockById(UUID id) {
+      return findById(id);
+    }
+
+    @Override
     public Optional<Delivery> findByOrderId(UUID orderId) {
       return Optional.ofNullable(byOrderId.get(orderId));
     }

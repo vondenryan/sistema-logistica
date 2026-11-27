@@ -4,6 +4,7 @@ import { ApiError, type Order, type OrderInput, type FreightQuote } from './api'
 import RoutesView from './RoutesView.vue'
 import MapPicker from './MapPicker.vue'
 import { createSession } from './session'
+const integrated = import.meta.env.MODE === 'integration'
 const session = createSession(); const { state, api } = session
 const email = ref(''); const password = ref(''); const busy = ref(false); const error = ref(''); const notice = ref(''); const view = ref<'list'|'form'|'detail'>('list'); const orders = ref<Order[]>([]); const selected = ref<Order | null>(null); const page = ref(0); const total = ref(0); const reason = ref(''); const editing = ref(false)
 let contextVersion = 0; let operationVersion = 0
@@ -46,7 +47,7 @@ function changePage(n: number) { page.value = n; void load() }
 onMounted(async () => { await run(async () => { if (await session.restore() && allowed.value) await load() }) })
 </script>
 <template>
-  <div class="shell"><header class="top"><div class="brand"><span class="mark">↗</span><div><strong>Fluxo</strong><small>GESTÃO LOGÍSTICA</small></div></div><div v-if="state.actor" class="identity"><span>{{ state.actor.role }}</span><button class="link" @click="session.logout(); view='list'">Sair</button></div></header>
+  <div class="shell"><header class="top"><a v-if="integrated" class="link" href="/">Módulos</a><div class="brand"><span class="mark">↗</span><div><strong>Fluxo</strong><small>GESTÃO LOGÍSTICA</small></div></div><div v-if="state.actor" class="identity"><span>{{ state.actor.role }}</span><button class="link" @click="session.logout(); view='list'">Sair</button></div></header>
   <main><div v-if="error" class="alert error" role="alert">{{ error }}</div><div v-if="notice" class="alert success" role="status">{{ notice }}</div><p v-if="busy" role="status" class="loading">Carregando…</p>
   <section v-if="!state.actor" class="login card"><div class="eyebrow">BEM-VINDO AO FLUXO</div><h1>Seu trabalho, em movimento.</h1><p>Acesse sua conta para acompanhar e gerenciar seus pedidos.</p><form @submit.prevent="login"><label>E-mail<input v-model="email" type="email" autocomplete="username" maxlength="254" required placeholder="voce@empresa.com"></label><label>Senha<input v-model="password" type="password" autocomplete="current-password" required></label><button class="primary full" :disabled="busy">Entrar <span>→</span></button></form></section>
   <nav v-if="state.actor" aria-label="Navegação principal"><button v-if="allowed" class="link" @click="area='orders'">Pedidos</button><button v-if="state.actor.role !== 'STORE'" class="link" @click="area='routes'">Rotas</button></nav>

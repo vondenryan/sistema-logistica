@@ -12,10 +12,10 @@ import org.springframework.stereotype.Component;
 
 /** Trust forwarding metadata only from explicitly configured socket peers. */
 @Component
-class ClientIpResolver {
+class LoginClientIpResolver {
   private final Set<String> trustedPeers;
 
-  ClientIpResolver(@Value("${app.security.login-trusted-proxy-ips:}") String configuredPeers) {
+  LoginClientIpResolver(@Value("${app.security.login-trusted-proxy-ips:}") String configuredPeers) {
     Set<String> peers = new HashSet<>();
     for (String entry : configuredPeers.split(",")) {
       if (entry.isBlank()) continue;

@@ -42,7 +42,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EntityScan(basePackageClasses = Pessoa2BackendApplication.class)
 @EnableJpaRepositories(basePackageClasses = Pessoa2BackendApplication.class)
-@ComponentScan(basePackages = {"logistics", "br.com.sistemalogistica.pessoa2"},
+@ComponentScan(basePackages = {"sprint4", "logistics", "br.com.sistemalogistica.pessoa2"},
     excludeFilters = {
         @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = Pessoa2BackendApplication.class),
         @ComponentScan.Filter(type = FilterType.REGEX, pattern = {
@@ -59,10 +59,12 @@ public class IntegratedApplication {
 
     @Bean
     @Order(1)
-    SecurityFilterChain publicTracking(HttpSecurity http) throws Exception {
+    SecurityFilterChain publicEndpoints(HttpSecurity http) throws Exception {
+        var paths = PathPatternRequestMatcher.withDefaults();
         return http
-            .securityMatcher(PathPatternRequestMatcher.withDefaults()
-                .matcher(HttpMethod.GET, "/api/v1/tracking/{code}"))
+            .securityMatcher(new org.springframework.security.web.util.matcher.OrRequestMatcher(
+                paths.matcher(HttpMethod.GET, "/api/v1/tracking/{code}"),
+                paths.matcher(HttpMethod.GET, "/ready")))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
             .build();

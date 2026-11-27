@@ -216,7 +216,7 @@ class FakesTest {
 
   @Test
   void loginRateLimitUsesMatchingProblemStatus() throws Exception {
-    var filter = new LoginRateLimitFilter(new ObjectMapper().findAndRegisterModules(), new ClientIpResolver(""));
+    var filter = new LoginRateLimitFilter(new ObjectMapper().findAndRegisterModules(), new LoginClientIpResolver(""));
     for (int n = 0; n < 31; n++) {
       var req = new MockHttpServletRequest("POST", "/api/v1/auth/login");
       req.setRemoteAddr("192.0.2.1");

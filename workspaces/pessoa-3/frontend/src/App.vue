@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import DriverPanelView from './DriverPanelView.vue'
 import TrackingView from './TrackingView.vue'
 import DocumentsView from './DocumentsView.vue'
@@ -25,7 +25,22 @@ async function login() {
   }
 }
 
-const activeTab = ref<'driver' | 'tracking' | 'documents'>('driver')
+type Tab = 'driver' | 'tracking' | 'documents'
+function tabFromLocation(): Tab {
+  if (!integrated) return 'driver'
+  if (window.location.hash === '#rastreamento') return 'tracking'
+  if (window.location.hash === '#documentos') return 'documents'
+  return 'driver'
+}
+const activeTab = ref<Tab>(tabFromLocation())
+const hashes = { driver: '#motorista', tracking: '#rastreamento', documents: '#documentos' }
+function selectTab(tab: Tab) {
+  activeTab.value = tab
+  if (integrated) window.location.hash = hashes[tab]
+}
+function syncTab() { activeTab.value = tabFromLocation() }
+onMounted(() => { if (integrated) window.addEventListener('hashchange', syncTab) })
+onUnmounted(() => window.removeEventListener('hashchange', syncTab))
 </script>
 
 <template>
@@ -33,21 +48,22 @@ const activeTab = ref<'driver' | 'tracking' | 'documents'>('driver')
     <header class="app-header">
       <h1 class="app-title">Logística · Entregas, Rastreamento &amp; Documentos</h1>
       <nav class="nav-tabs" aria-label="Navegação">
+        <a v-if="integrated" class="tab-btn" href="/">Módulos</a>
         <button
           :class="['tab-btn', { active: activeTab === 'driver' }]"
-          @click="activeTab = 'driver'"
+          @click="selectTab('driver')"
         >
           Painel do Motorista
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'tracking' }]"
-          @click="activeTab = 'tracking'"
+          @click="selectTab('tracking')"
         >
           Rastreamento Público
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'documents' }]"
-          @click="activeTab = 'documents'"
+          @click="selectTab('documents')"
         >
           Documentos Simulados
         </button>

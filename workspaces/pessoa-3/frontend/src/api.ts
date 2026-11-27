@@ -95,6 +95,8 @@ interface DeliverySession {
 }
 
 const session = shallowRef<DeliverySession | null>(null)
+const integratedSession = import.meta.env.MODE === 'integration'
+const sessionKey = 'logistica.entregas'
 let expiryTimer: ReturnType<typeof setTimeout> | undefined
 
 export const deliveryAuthenticated = computed(() => session.value !== null)
@@ -102,6 +104,7 @@ export const deliveryAuthenticated = computed(() => session.value !== null)
 export function clearDeliverySession() {
   clearTimeout(expiryTimer)
   session.value = null
+  if (integratedSession) sessionStorage.removeItem(sessionKey)
 }
 
 export function setDeliverySession(next: DeliverySession) {
@@ -111,7 +114,17 @@ export function setDeliverySession(next: DeliverySession) {
   }
   clearDeliverySession()
   session.value = next
+  if (integratedSession) sessionStorage.setItem(sessionKey, JSON.stringify(next))
   expiryTimer = setTimeout(clearDeliverySession, remaining)
+}
+
+if (integratedSession) {
+  try {
+    const saved = sessionStorage.getItem(sessionKey)
+    if (saved) setDeliverySession(JSON.parse(saved))
+  } catch {
+    clearDeliverySession()
+  }
 }
 
 async function authenticatedFetch(path: string, init?: RequestInit) {

@@ -99,6 +99,10 @@ class RouteAdapter implements RouteStore, DriverRouteLookupPort {
         id);
   }
 
+  public void complete(UUID id) {
+    db.update("UPDATE routing.routes SET status='COMPLETED' WHERE id=?", id);
+  }
+
   public void done(UUID id, UUID order) {
     db.update(
         "UPDATE routing.route_stops SET delivery_done=true WHERE route_id=? AND order_id=?",

@@ -17,10 +17,10 @@ class LoginRateLimitFilter extends OncePerRequestFilter {
 
   private final Map<String, Window> attempts = new LinkedHashMap<>(16, .75f, true);
   private final ObjectMapper mapper;
-  private final ClientIpResolver clients;
+  private final LoginClientIpResolver clients;
   private final Clock clock = Clock.systemUTC();
 
-  LoginRateLimitFilter(ObjectMapper mapper, ClientIpResolver clients) {
+  LoginRateLimitFilter(ObjectMapper mapper, LoginClientIpResolver clients) {
     this.mapper = mapper;
     this.clients = clients;
   }

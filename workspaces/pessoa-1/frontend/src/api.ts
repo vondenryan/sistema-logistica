@@ -35,6 +35,7 @@ export class Api {
   createRoute(originId: string, orderIds: string[]) { return this.request<RouteSnapshot>('/routes', 'POST', { originId, orderIds }) }
   getRoute(id: string) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}`) }
   assignRoute(id: string) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}/assign`, 'POST', {}) }
+  completeRoute(id: string) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}/complete`, 'POST', {}) }
   startRoute(id: string) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}/start`, 'POST', {}) }
   reorderRoute(id: string, orderedOrderIds: string[]) { return this.request<RouteSnapshot>(`/routes/${encodeURIComponent(id)}/stops`, 'PUT', { orderedOrderIds }) }
   cancel(id: string, reason: string) { return this.request<Order>(`/orders/${encodeURIComponent(id)}/cancel`, 'POST', { reason }) }
