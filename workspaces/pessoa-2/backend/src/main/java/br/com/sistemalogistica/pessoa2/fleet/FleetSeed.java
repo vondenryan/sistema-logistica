@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
+import contracts.v1.FleetType;
 
 @Component
 @Profile({"dev", "test", "integration-demo & integration"})

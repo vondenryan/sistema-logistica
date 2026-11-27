@@ -17,7 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
+import contracts.v1.FleetType;
 import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 
 @SpringBootTest

@@ -1,7 +1,8 @@
 package sprint4;
 
 import br.com.sistemalogistica.pessoa2.Pessoa2BackendApplication;
-import br.com.sistemalogistica.pessoa2.fleet.FleetAssignmentService;
+import br.com.sistemalogistica.pessoa2.security.ActorContext;
+import br.com.sistemalogistica.pessoa2.security.Role;
 import br.com.sistemalogistica.pessoa2.fleet.RouteCapacityValidator;
 import contracts.v1.ContractException;
 import contracts.v1.CurrentActorPort;
@@ -132,8 +133,10 @@ public class IntegratedApplication {
     }
 
     @Bean
-    IntegratedPorts integratedPorts(CurrentActorPort actor, RouteSnapshotPort routes,
-            ObjectProvider<FleetAssignmentService> fleet) {
-        return new IntegratedPorts(actor, routes, fleet);
+    br.com.sistemalogistica.pessoa2.security.CurrentActorPort partnerActor(CurrentActorPort identity) {
+        return () -> {
+            var actor = identity.requireActor();
+            return new ActorContext(actor.actorId(), Role.valueOf(actor.role().name()), actor.storeId(), actor.driverId());
+        };
     }
 }

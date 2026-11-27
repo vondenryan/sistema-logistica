@@ -130,6 +130,17 @@
 																<exclude>contracts/v1/OriginType.java</exclude>
 																<exclude>contracts/v1/PartnerLookupPort.java</exclude>
 																<exclude>contracts/v1/StoreSnapshot.java</exclude>
+																<exclude>contracts/v1/AssignmentRequest.java</exclude>
+																<exclude>contracts/v1/AssignmentSnapshot.java</exclude>
+																<exclude>contracts/v1/FleetAssignmentPort.java</exclude>
+																<exclude>contracts/v1/FleetReleasePort.java</exclude>
+																<exclude>contracts/v1/FleetType.java</exclude>
+																<exclude>contracts/v1/ReleaseReason.java</exclude>
+																<exclude>contracts/v1/ReleaseReceipt.java</exclude>
+																<exclude>contracts/v1/ReleaseRequest.java</exclude>
+																<exclude>contracts/v1/RouteSnapshot.java</exclude>
+																<exclude>contracts/v1/RouteSnapshotPort.java</exclude>
+																<exclude>contracts/v1/RouteStatus.java</exclude>
 											</excludes>
 										</resource>
 										<resource>

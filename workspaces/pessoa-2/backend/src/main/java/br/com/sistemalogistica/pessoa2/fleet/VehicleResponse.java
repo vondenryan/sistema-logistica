@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
+import contracts.v1.FleetType;
 
 public record VehicleResponse(
 		UUID id,

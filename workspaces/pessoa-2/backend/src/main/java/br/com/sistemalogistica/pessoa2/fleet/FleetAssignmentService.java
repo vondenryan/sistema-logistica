@@ -2,19 +2,21 @@ package br.com.sistemalogistica.pessoa2.fleet;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetAssignmentPort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetReleasePort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReceipt;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.RouteSnapshotPort;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.AssignmentSnapshot;
+import contracts.v1.FleetAssignmentPort;
+import contracts.v1.FleetReleasePort;
+import contracts.v1.ReleaseReceipt;
+import contracts.v1.ReleaseRequest;
+import contracts.v1.RouteSnapshotPort;
 import br.com.sistemalogistica.pessoa2.security.CurrentActorPort;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ContractException;
 
 @Service
 public class FleetAssignmentService implements FleetAssignmentPort, FleetReleasePort {
@@ -64,42 +66,47 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 
 	private static void validateAssignmentRequest(AssignmentRequest request) {
 		if (request == null) {
-			throw ContractException.validation("request", "Must not be null.");
+			throw validation("request", "MUST_NOT_BE_NULL");
 		}
 		if (request.routeId() == null) {
-			throw ContractException.validation("routeId", "Must not be null.");
+			throw validation("routeId", "MUST_NOT_BE_NULL");
 		}
 		if (request.originId() == null) {
-			throw ContractException.validation("originId", "Must not be null.");
+			throw validation("originId", "MUST_NOT_BE_NULL");
 		}
 		BigDecimal capacity = request.requiredCapacityKg();
 		if (capacity == null || capacity.signum() <= 0) {
-			throw ContractException.validation("requiredCapacityKg", "Must be greater than zero.");
+			throw validation("requiredCapacityKg", "MUST_BE_POSITIVE");
 		}
 		if (capacity.scale() > 3 || capacity.precision() - capacity.scale() > 9) {
-			throw ContractException.validation(
+			throw validation(
 					"requiredCapacityKg",
-					"Must fit decimal(12,3).");
+					"MUST_BE_IN_RANGE");
 		}
 	}
 
 	private static void validateReleaseRequest(ReleaseRequest request) {
 		if (request == null) {
-			throw ContractException.validation("request", "Must not be null.");
+			throw validation("request", "MUST_NOT_BE_NULL");
 		}
 		if (request.routeId() == null) {
-			throw ContractException.validation("routeId", "Must not be null.");
+			throw validation("routeId", "MUST_NOT_BE_NULL");
 		}
 		if (request.eventId() == null) {
-			throw ContractException.validation("eventId", "Must not be null.");
+			throw validation("eventId", "MUST_NOT_BE_NULL");
 		}
 		if (request.reason() == null) {
-			throw ContractException.validation("reason", "Must not be null.");
+			throw validation("reason", "MUST_NOT_BE_NULL");
 		}
 	}
 
+	private static ContractException validation(String field, String reason) {
+		return new ContractException("VALIDATION_ERROR",
+				List.of(Map.of("field", field, "reason", reason)));
+	}
+
 	private static ContractException notFound() {
-		return new ContractException("NOT_FOUND", "Fleet assignment was not found.");
+		return new ContractException("NOT_FOUND");
 	}
 
 }

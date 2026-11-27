@@ -1,5 +1,8 @@
 package br.com.sistemalogistica.pessoa2.contracts.v1;
 
+import contracts.v1.*;
+import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -7,7 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ContractException;
 
 class FakeRouteSnapshotAdapterTests {
 
@@ -33,6 +36,6 @@ class FakeRouteSnapshotAdapterTests {
 		ContractException exception =
 				assertThrows(ContractException.class, () -> adapter.getById(UUID.randomUUID()));
 
-		assertEquals("NOT_FOUND", exception.getCode());
+		assertEquals("NOT_FOUND", exception.code());
 	}
 }

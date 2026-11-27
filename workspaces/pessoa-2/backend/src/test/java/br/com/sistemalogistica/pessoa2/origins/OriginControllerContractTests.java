@@ -149,7 +149,7 @@ class OriginControllerContractTests {
 						.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
 						.andExpect(jsonPath("$.details.length()").value(1))
 						.andExpect(jsonPath("$.details[0].field").value("address." + invalid[0]))
-						.andExpect(jsonPath("$.details[0].reason").isNotEmpty())
+						.andExpect(jsonPath("$.details[0].reason").value("MUST_BE_IN_RANGE"))
 						.andExpect(jsonPath("$.details[0].message").doesNotHaveJsonPath());
 			}
 		}

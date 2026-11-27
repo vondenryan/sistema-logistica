@@ -34,13 +34,10 @@
           },
           "reason": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^[A-Z][A-Z0-9_]*$"
           }
         },
-        "required": [
-          "field",
-          "reason"
-        ],
+        "required": ["field", "reason"],
         "additionalProperties": false
       }
     },
