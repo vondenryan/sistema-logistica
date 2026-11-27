@@ -151,6 +151,11 @@ class DeliveryAuthorizationTest {
     }
 
     @Override
+    public Optional<Delivery> lockById(UUID id) {
+      return findById(id);
+    }
+
+    @Override
     public Optional<Delivery> findByOrderId(UUID oId) {
       return Optional.ofNullable(byOrder.get(oId));
     }

@@ -14,6 +14,8 @@ public interface RouteStore {
 
   void start(UUID id);
 
+  void complete(UUID id);
+
   void done(UUID routeId, UUID orderId);
 
   boolean pending(UUID routeId);

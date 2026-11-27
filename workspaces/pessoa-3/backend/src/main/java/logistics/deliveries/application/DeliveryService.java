@@ -187,7 +187,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
     ActorContext actor = currentActorPort.requireActor();
     Delivery delivery =
         deliveryRepository
-            .findById(deliveryId)
+            .lockById(deliveryId)
             .orElseThrow(() -> new ContractException("NOT_FOUND"));
 
     validateActorAccess(actor, delivery);
@@ -231,6 +231,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
       default -> throw new ContractException("VALIDATION_ERROR");
     }
 
+    if (fromStatus == delivery.getStatus()) return delivery.toSnapshot();
     deliveryRepository.save(delivery);
 
     DeliveryEvent event =
@@ -244,7 +245,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
             null);
     deliveryRepository.recordEvent(event);
 
-    if (notificationService != null && fromStatus != delivery.getStatus()) {
+    if (notificationService != null) {
       if (delivery.getStatus() == DeliveryStatus.IN_TRANSIT) {
         notificationService.recordIntent(
             NotificationEventType.DELIVERY_IN_TRANSIT,
@@ -273,13 +274,14 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
     ActorContext actor = currentActorPort.requireActor();
     Delivery delivery =
         deliveryRepository
-            .findById(deliveryId)
+            .lockById(deliveryId)
             .orElseThrow(() -> new ContractException("NOT_FOUND"));
 
     validateActorAccess(actor, delivery);
 
     DeliveryStatus fromStatus = delivery.getStatus();
     delivery.complete(receiverName);
+    if (fromStatus == DeliveryStatus.DELIVERED) return delivery.toSnapshot();
     deliveryRepository.save(delivery);
 
     DeliveryEvent event =
@@ -293,7 +295,7 @@ public class DeliveryService implements DeliveryCommandPort, DeliveryStatusPort 
             receiverName.trim());
     deliveryRepository.recordEvent(event);
 
-    if (notificationService != null && fromStatus != DeliveryStatus.DELIVERED) {
+    if (notificationService != null) {
       notificationService.recordIntent(
           NotificationEventType.DELIVERY_DELIVERED,
           delivery.getOrderId(),

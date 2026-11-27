@@ -102,91 +102,12 @@ jobs:
             "$venv/bin/python" -m unittest discover -s "$suite" -v
           done
 
-      - name: Validar integração de frota, entregas e rastreamento
-        if: ${{ hashFiles('workspaces/pessoa-2/scripts/smoke-integration.py') != '' }}
+      - name: Compilar e validar aplicação integrada pelo gateway
         shell: bash
-        env:
-          POSTGRES_CONTAINER: ${{ job.services.postgres-p2.id }}
-          DB_USER: pessoa2_user
-          DB_PASSWORD: pessoa2_local_only
-          SPRING_PROFILES_ACTIVE: integration-demo
-          P2_SMOKE_URL: http://127.0.0.1:8080
-          P3_SMOKE_MAILPIT_URL: http://127.0.0.1:8025
-          MAIL_HOST: 127.0.0.1
-          OSRM_BASE_URL: http://127.0.0.1:19090
-          FREIGHT_TARIFF_PER_KM: '2.50'
-          NOTIFICATIONS_OUTBOX_POLL_INTERVAL_MS: '1000'
         run: |
-          p2=workspaces/pessoa-2
-          p3=workspaces/pessoa-3
-          mvn --batch-mode --file "$p2/backend/pom.xml" -Pintegration clean package -DskipTests
-          export JWT_SECRET="$(openssl rand -hex 32)"
-          export P2_SMOKE_PASSWORD="$(openssl rand -hex 16)"
-
-          backend_pid=
-          mailpit_id=
-          log=
-          stop_backend() {
-            if [[ -n "$backend_pid" ]]; then
-              kill "$backend_pid" 2>/dev/null || true
-              wait "$backend_pid" 2>/dev/null || true
-              backend_pid=
-            fi
-          }
-          cleanup() {
-            result=$?
-            stop_backend
-            if (( result != 0 )); then
-              if [[ -n "$log" ]]; then cat "$log"; fi
-              if [[ -n "$mailpit_id" ]]; then docker logs "$mailpit_id"; fi
-            fi
-            if [[ -n "$mailpit_id" ]]; then docker rm -f "$mailpit_id" >/dev/null; fi
-          }
-          trap cleanup EXIT
-
-          start_backend() {
-            local database="$1"
-            docker exec "$POSTGRES_CONTAINER" createdb -U "$DB_USER" "$database"
-            log="$RUNNER_TEMP/$database.log"
-            DB_URL="jdbc:postgresql://127.0.0.1:55432/$database" \
-              java -jar "$p2"/backend/target/*-integration.jar >"$log" 2>&1 &
-            backend_pid=$!
-
-            for attempt in {1..60}; do
-              kill -0 "$backend_pid" || return 1
-              if [[ "$(curl --silent --max-time 2 --output /dev/null --write-out '%{http_code}' \
-                "$P2_SMOKE_URL/api/v1/auth/me")" == 401 ]] &&
-                [[ "$(docker exec "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$database" -Atqc \
-                  "SELECT EXISTS (SELECT 1 FROM pessoa2.origins) AND EXISTS (SELECT 1 FROM pessoa2.vehicles)")" == t ]]; then
-                return 0
-              fi
-              sleep 1
-            done
-            return 1
-          }
-
-          seed() {
-            docker exec -e P2_SMOKE_PASSWORD -i "$POSTGRES_CONTAINER" \
-              psql -U "$DB_USER" -d "$1" <"$2"
-          }
-
-          start_backend logistics_p2_ci
-          seed logistics_p2_ci "$p2/scripts/seed-integration-actors.sql"
-          python3 "$p2/scripts/smoke-integration.py"
-          npm --prefix "$p2/frontend" run build
-          stop_backend
-
-          if [[ -f "$p3/scripts/smoke-integration.py" ]]; then
-            if ! command -v pdftotext >/dev/null; then
-              sudo apt-get update
-              sudo apt-get install -y poppler-utils
-            fi
-            mailpit_id="$(docker run -d -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 \
-              axllent/mailpit@sha256:23a2ef85bc50853ab3093645d1d64679afd8887e89da5e48a88940c172591a4e)"
-            start_backend logistics_p3_ci
-            seed logistics_p3_ci "$p2/scripts/seed-integration-actors.sql"
-            seed logistics_p3_ci "$p3/scripts/seed-smoke-drivers.sql"
-            python3 "$p3/scripts/smoke-integration.py"
-            npm --prefix "$p3/frontend" run build
-            npm --prefix "$p3/frontend" run build:integration
+          if ! command -v pdftotext >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y poppler-utils
           fi
+          bash integration/build.sh
+          bash integration/verify.sh

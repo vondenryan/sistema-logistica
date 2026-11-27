@@ -182,7 +182,7 @@ function isProblemDetail(value: unknown): value is ProblemDetail {
 
 export const api = {
   signIn(email: string, password: string) {
-    return request<{ accessToken: string; actor: { role: Role; storeId?: string | null } }>(
+    return request<{ accessToken: string; expiresAt: string; actor: { role: Role; storeId?: string | null } }>(
       '/api/v1/auth/login',
       { method: 'POST', body: JSON.stringify({ email, password }) },
     )

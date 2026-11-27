@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { currentRole, isDevMode, session, clearSession } from './devActor'
+import { currentRole, isDevMode, session, clearSession, saveSession } from './devActor'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from './api'
 import { canManagePartners } from './partners/partnerPolicy'
 
@@ -8,6 +9,9 @@ const canManageFleet = computed(() =>
   canManagePartners(currentRole.value),
 )
 
+const integrated = import.meta.env.MODE === 'integration'
+const route = useRoute()
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const signingIn = ref(false)
@@ -18,8 +22,8 @@ async function signIn() {
   loginError.value = ''
   try {
     const result = await api.signIn(email.value.trim(), password.value)
-    session.accessToken = result.accessToken
-    session.actor = result.actor
+    saveSession(result)
+    if (route.meta.requiresFleetAccess && !canManageFleet.value) await router.replace({ name: 'stores' })
   } catch (error) {
     loginError.value = error instanceof Error ? error.message : 'Não foi possível entrar.'
   } finally {
@@ -32,6 +36,7 @@ async function signIn() {
 <template>
   <div class="app-shell">
     <header class="site-header">
+      <a v-if="integrated" href="/">Módulos</a>
       <RouterLink class="brand" to="/stores">Sistema de Logística</RouterLink>
       <nav v-if="isDevMode || session.actor" aria-label="Navegação principal">
         <RouterLink to="/stores">Lojas</RouterLink>

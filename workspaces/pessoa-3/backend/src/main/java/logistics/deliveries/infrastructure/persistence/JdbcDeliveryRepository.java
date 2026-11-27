@@ -108,6 +108,16 @@ public class JdbcDeliveryRepository implements DeliveryRepository {
   }
 
   @Override
+  public Optional<Delivery> lockById(UUID id) {
+    return jdbcTemplate.query(
+        """
+        SELECT id, order_id, route_id, status, receiver_name, created_at, updated_at
+        FROM deliveries.deliveries WHERE id = ? FOR UPDATE
+        """,
+        deliveryRowMapper, id).stream().findFirst();
+  }
+
+  @Override
   public Optional<Delivery> findByOrderId(UUID orderId) {
     List<Delivery> results =
         jdbcTemplate.query(

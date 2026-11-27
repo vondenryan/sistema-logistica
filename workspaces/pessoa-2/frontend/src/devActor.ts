@@ -5,14 +5,37 @@ export type Role = DevRole | 'DRIVER'
 
 export const isDevMode = import.meta.env.DEV && import.meta.env.MODE !== 'integration'
 
-export const session = reactive<{
+const sessionKey = 'logistica.frota'
+type Session = {
   accessToken: string
   actor: { role: Role; storeId?: string | null } | null
-}>({ accessToken: '', actor: null })
+  expiresAt: string
+}
+
+function restoreSession(): Session {
+  const empty = { accessToken: '', actor: null, expiresAt: '' }
+  if (isDevMode) return empty
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(sessionKey) ?? 'null') as Session | null
+    if (saved?.accessToken && saved.actor && Date.parse(saved.expiresAt) > Date.now()) return saved
+  } catch {
+    // A malformed session is treated as signed out.
+  }
+  return empty
+}
+
+export const session = reactive<Session>(restoreSession())
+
+export function saveSession(next: Session) {
+  Object.assign(session, next)
+  sessionStorage.setItem(sessionKey, JSON.stringify(next))
+}
 
 export function clearSession() {
   session.accessToken = ''
   session.actor = null
+  session.expiresAt = ''
+  sessionStorage.removeItem(sessionKey)
 }
 
 export const devActor = reactive<{

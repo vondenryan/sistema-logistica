@@ -1,0 +1,8 @@
+services:
+  osrm:
+    image: python:3.12-slim
+    volumes:
+      - ./osrm-fixture.py:/repo/integration/osrm-fixture.py:ro
+      - ../workspaces/pessoa-3/scripts:/repo/workspaces/pessoa-3/scripts:ro
+      - ../workspaces/pessoa-2/scripts:/repo/workspaces/pessoa-2/scripts:ro
+    command: ["python", "/repo/integration/osrm-fixture.py"]

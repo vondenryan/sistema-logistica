@@ -9,6 +9,8 @@ public interface DeliveryRepository {
 
   Optional<Delivery> findById(UUID id);
 
+  Optional<Delivery> lockById(UUID id);
+
   Optional<Delivery> findByOrderId(UUID orderId);
 
   List<Delivery> findByRouteId(UUID routeId);

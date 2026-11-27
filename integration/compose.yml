@@ -1,0 +1,70 @@
+name: sistema-logistica-integrado
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: logistics
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "logistics", "-d", "logistics"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build:
+      context: ./artifacts
+      dockerfile: ../backend.Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/logistics
+      DB_USER: logistics
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET}
+      SPRING_PROFILES_ACTIVE: ${INTEGRATION_PROFILE:-integration}
+      FREIGHT_TARIFF_PER_KM: ${FREIGHT_TARIFF_PER_KM:?Defina a tarifa para este ambiente}
+      OSRM_BASE_URL: ${OSRM_BASE_URL:?Defina OSRM_BASE_URL}
+      MAIL_HOST: mailpit
+      NO_PROXY: localhost,127.0.0.1,postgres,mailpit,${OSRM_NO_PROXY:-osrm}
+      MAIL_PORT: '1025'
+      GATEWAY_TRUSTED_IP: ${GATEWAY_IPV4:-172.30.65.10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--noproxy", "*", "http://127.0.0.1:8080/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 35
+
+  gateway:
+    build:
+      context: ./artifacts
+      dockerfile: ../gateway.Dockerfile
+    networks:
+      default:
+        ipv4_address: ${GATEWAY_IPV4:-172.30.65.10}
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-18000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-18025}:8025"
+
+volumes:
+  postgres:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${INTEGRATION_SUBNET:-172.30.65.0/24}
+          ip_range: ${INTEGRATION_DYNAMIC_RANGE:-172.30.65.128/25}
