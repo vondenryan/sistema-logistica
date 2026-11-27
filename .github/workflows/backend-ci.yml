@@ -63,7 +63,7 @@ jobs:
           p1=workspaces/pessoa-1/backend/src
           p2=workspaces/pessoa-2/backend/src
           if [[ -f "$p1/main/java/contracts/v1/PartnerLookupPort.java" && -f "$p2/main/java/contracts/v1/PartnerLookupPort.java" ]]; then
-            for type in AddressSnapshot ContractException OriginSnapshot OriginType PartnerLookupPort StoreSnapshot; do
+            for type in AddressSnapshot ContractException OriginSnapshot OriginType PartnerLookupPort StoreSnapshot AssignmentRequest AssignmentSnapshot FleetAssignmentPort FleetReleasePort FleetType ReleaseReason ReleaseReceipt ReleaseRequest RouteSnapshot RouteSnapshotPort RouteStatus; do
               diff -u "$p1/main/java/contracts/v1/$type.java" "$p2/main/java/contracts/v1/$type.java"
             done
             diff -u "$p1/test/java/contracts/v1/PartnerLookupContract.java" "$p2/test/java/contracts/v1/PartnerLookupContract.java"

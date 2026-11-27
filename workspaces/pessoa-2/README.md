@@ -41,7 +41,7 @@ O fake `CurrentActorPort` está disponível somente no perfil `dev`. Fora desse 
 
 ## Contratos compartilhados
 
-O pacote Java `br.com.sistemalogistica.pessoa2.contracts.v1` no backend é uma cópia local provisória dos contratos compartilhados, incluindo `PartnerLookupPort` e seus snapshots. Ele permanece no workspace até o módulo compartilhado ser congelado; não há uma pasta `contracts/v1/` na raiz do repositório.
+`PartnerLookupPort` e seus snapshots usam o pacote Java compartilhado `contracts.v1`, compatível com os demais workspaces; as coordenadas do snapshot são `BigDecimal`. As portas de atribuição, liberação e consulta de rotas também usam `contracts.v1`. Não há uma pasta compartilhada `contracts/v1/` na raiz do repositório.
 
 ## Cadastro de origens
 
@@ -62,6 +62,49 @@ O POST recebe `{name,contactEmail?,storeId}`. `name` é obrigatório (máximo 16
 Somente `ADMIN` e `OPERATOR` podem listar, criar ou atualizar fornecedores. `STORE` recebe 403 na listagem, criação e atualização e só consulta fornecedores vinculados à própria loja; outro fornecedor fora do escopo retorna 404. `DRIVER` recebe 403.
 
 **Pontos em aberto/decisões locais:** o contrato não define como `active` aparece nas respostas de fornecedor, portanto esta implementação não expõe `active`; a inativação com `{"active":false}` fica interna e não exclui fisicamente nem deixa o fornecedor invisível. O PATCH não consegue apagar `contactEmail`: `contactEmail:null` é rejeitado com 400 e o campo omitido preserva o valor atual. IDs inválidos em GET/PATCH retornam 400 `VALIDATION_ERROR`.
+
+## Cadastros de frota
+
+O backend expõe `GET /api/v1/carriers`, `GET /api/v1/carriers/{carrierId}`, `POST /api/v1/carriers` e `PATCH /api/v1/carriers/{carrierId}`; as mesmas operações existem em `/api/v1/drivers` e `/api/v1/vehicles`. As listagens usam `page=0` e `size=20` por padrão, com tamanho de 1 a 100 e ordenação estável por criação e ID. `active` aparece sempre nas respostas; `carrierId` é omitido quando não há vínculo. UUID inválido em GET/PATCH retorna 400 `VALIDATION_ERROR`.
+
+Requests:
+
+- Carrier: `{ "name": "...", "active": true }`.
+- Driver: `{ "name": "...", "carrierId": "<UUID>", "active": true }`; `carrierId` pode ser omitido. Quando informado, deve referenciar uma transportadora existente (404).
+- Vehicle: `{ "identifier": "VEI-001", "capacityKg": "1000.000", "fleetType": "OWN", "active": true }`. `identifier` tem de 1 a 40 caracteres e é único. `capacityKg` é uma string decimal positiva, com até três casas e compatível com `decimal(12,3)`. Para `THIRD_PARTY`, `carrierId` é obrigatório e deve existir (404); para `OWN`, deve ser omitido (enviá-lo retorna 400).
+
+PATCH aceita apenas campos reconhecidos; campo omitido mantém o valor atual e `carrierId:null` retorna 400 também para motoristas. Ao mudar um veículo para `OWN`, o vínculo anterior é limpo automaticamente; para `THIRD_PARTY`, deve haver uma transportadora existente. Use `{"active":false}` para inativar, sem exclusão física. Somente `ADMIN` e `OPERATOR` podem operar os três cadastros; outros papéis recebem 403 e ausência de identidade recebe 401.
+
+As únicas condições de 409 definidas para estes cadastros são:
+
+- Carrier: nome duplicado após aparar espaços e comparar sem diferenciar maiúsculas/minúsculas (POST ou PATCH).
+- Vehicle: `identifier` duplicado (POST ou PATCH).
+- Driver: não há condição de conflito 409 definida.
+
+O seed de frota é idempotente, insere cada registro somente se seu ID ainda não existir e é carregado apenas nos perfis `dev` e `test`, nunca no perfil padrão. Todos os registros são ativos. Os IDs `55555555-5555-4555-8555-555555555555` (motorista) e `66666666-6666-4666-8666-666666666666` (veículo) são os IDs base especificados no contrato; os demais IDs abaixo são locais deste seed:
+
+| Tipo | ID | Nome/identificador | Tipo de frota/capacidade | Transportadora |
+|---|---|---|---|---|
+| Carrier | `77777777-7777-4777-8777-777777777777` | Transportadora Parceira Alfa | — | — |
+| Carrier | `88888888-8888-4888-8888-888888888888` | Transportadora Parceira Beta | — | — |
+| Driver | `55555555-5555-4555-8555-555555555555` | Motorista Próprio 1 | — | — |
+| Driver | `55555555-5555-4555-8555-555555555556` | Motorista Próprio 2 | — | — |
+| Driver | `55555555-5555-4555-8555-555555555557` | Motorista Terceirizado 1 | — | Alfa |
+| Vehicle | `66666666-6666-4666-8666-666666666666` | VEI-001 | OWN / `1000.000` kg | — |
+| Vehicle | `66666666-6666-4666-8666-666666666667` | VEI-002 | OWN / `500.000` kg | — |
+| Vehicle | `66666666-6666-4666-8666-666666666668` | TER-001 | THIRD_PARTY / `2000.000` kg | Alfa |
+
+**Ponto em aberto do contrato:** não está definido como a inativação de uma transportadora afeta motoristas e veículos vinculados; por isso, o cadastro não bloqueia alterações nem muda a visibilidade dos vínculos com base no estado da transportadora.
+
+## Atribuição automática de frota
+
+O backend implementa `FleetAssignmentPort` e `FleetReleasePort` internamente. A consulta administrativa é `GET /api/v1/fleet/assignments/{routeId}` (ADMIN/OPERATOR). Para demonstração local, `POST /api/v1/fleet/assignments` aceita `{ "routeId": "<UUID>", "originId": "<UUID>", "requiredCapacityKg": "40.000" }` e existe **somente no perfil `dev`**, também restrita a ADMIN/OPERATOR; ela chama a mesma porta interna. Não há endpoint público de atribuição fora desse perfil.
+
+O fake local de `RouteSnapshotPort` existe apenas em `dev` e `test`, não consulta tabelas de `routing` e fornece cinco rotas PLANNED fixas de IDs `33333333-3333-4333-8333-333333333333` a `33333333-3333-4333-8333-333333333337`, todas para a origem `11111111-1111-4111-8111-111111111111` e a loja `22222222-2222-4222-8222-222222222222`; também fornece fixtures fixas ASSIGNED e COMPLETED para validar pré-condições. As rotas `...3334` e `...3335` ficam reservadas aos testes de concorrência. Um fixture local idempotente disponibiliza a loja e a origem base pelo `PartnerLookupPort`. O snapshot v1 não inclui peso total da rota e `orders` está fora deste escopo: a atribuição valida o peso positivo solicitado e a capacidade do veículo, sem comparar com a soma de pedidos.
+
+A seleção usa somente motoristas e veículos ativos e sem reserva ativa, capacidade suficiente, frota própria primeiro e fallback terceirizado; pares terceirizados precisam pertencer à mesma transportadora. Entre candidatos, motoristas são ordenados pelo número de reservas ativas no próprio fleet (decisão provisória para representar “entregas pendentes”) e depois por UUID; veículos empatados também são ordenados por UUID. Não havendo par elegível, a porta retorna `NO_ELIGIBLE_RESOURCE` (409). A migration V6 mantém uma única linha por rota e protege motorista/veículo contra reservas ativas concorrentes. Em caso de colisão, uma nova transação verifica a idempotência e reavalia os pares disponíveis. Após cinco colisões consecutivas, a porta retorna `CONFLICT`.
+
+`FleetReleasePort.release` deduplica por `eventId`. `ROUTE_CANCELLED` retorna `PRECONDITION_FAILED` (422), pois a regra de cancelamento ainda não foi aprovada. Liberar uma reserva mantém a linha da atribuição, e `route_id` continua único: a mesma rota não recebe uma nova atribuição após a liberação.
 
 
 O adaptador de parceiros usa `contracts.v1.PartnerLookupPort` e converte as coordenadas para `BigDecimal` na interface entre módulos. Os workspaces P1 e P2 mantêm cópias idênticas dos tipos da porta e da verificação de contrato para continuar executando de forma independente. O CI compara essas cópias e executa a verificação tanto no fake do P1 quanto no adaptador PostgreSQL do P2.

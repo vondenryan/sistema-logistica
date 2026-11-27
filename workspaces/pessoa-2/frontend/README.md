@@ -1,6 +1,6 @@
 # Frontend — Pessoa 2
 
-Aplicação Vue 3 + TypeScript para o cadastro de lojas do workspace.
+Aplicação Vue 3 + TypeScript para os cadastros do workspace.
 
 ## Desenvolvimento local
 
@@ -14,3 +14,9 @@ O seletor de perfil e os headers `X-Dev-Role` e `X-Dev-Store-Id` são exclusivos
 
 - `npm test` executa os testes Vitest.
 - `npm run build` verifica os tipos e gera a aplicação de produção.
+
+## Cadastros de frota
+
+O menu de Transportadoras, Motoristas, Veículos e Atribuição de frota, assim como o acesso direto às rotas correspondentes, é restrito aos perfis `ADMIN` e `OPERATOR`. Os três cadastros permitem paginação, criação, edição e inativação sem exclusão física.
+
+A tela de atribuição consulta `GET /api/v1/fleet/assignments/{routeId}` para qualquer UUID. O formulário de demonstração de `POST /api/v1/fleet/assignments` aparece somente no modo de desenvolvimento do frontend e requer que o backend também esteja no perfil Spring `dev`; usa as rotas fixas e a origem do fake local.

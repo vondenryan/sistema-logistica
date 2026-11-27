@@ -110,7 +110,7 @@ class StoreControllerContractTests {
 		when(service.create(any(CreateStoreRequest.class))).thenThrow(new ContractException(
 				"CONFLICT",
 				"A store with this name already exists.",
-				List.of(Map.of("field", "name", "reason", "Must be unique."))));
+				List.of(Map.of("field", "name", "reason", "MUST_BE_UNIQUE"))));
 
 		mockMvc.perform(post("/api/v1/stores")
 						.contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +119,7 @@ class StoreControllerContractTests {
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CONFLICT"))
 				.andExpect(jsonPath("$.details[0].field").value("name"))
-				.andExpect(jsonPath("$.details[0].reason").value("Must be unique."));
+				.andExpect(jsonPath("$.details[0].reason").value("MUST_BE_UNIQUE"));
 	}
 
 	@Test

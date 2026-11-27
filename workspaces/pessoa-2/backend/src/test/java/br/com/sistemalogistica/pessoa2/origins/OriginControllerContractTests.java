@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -91,7 +92,9 @@ class OriginControllerContractTests {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-				.andExpect(jsonPath("$.details").isArray());
+				.andExpect(jsonPath("$.details[*].field", hasItem("address.line1")))
+				.andExpect(jsonPath("$.details[*].reason").isArray())
+				.andExpect(jsonPath("$.details[*].message").doesNotExist());
 
 		verify(service, never()).create(any(CreateOriginRequest.class));
 	}
@@ -146,7 +149,7 @@ class OriginControllerContractTests {
 						.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
 						.andExpect(jsonPath("$.details.length()").value(1))
 						.andExpect(jsonPath("$.details[0].field").value("address." + invalid[0]))
-						.andExpect(jsonPath("$.details[0].reason").isNotEmpty())
+						.andExpect(jsonPath("$.details[0].reason").value("MUST_BE_IN_RANGE"))
 						.andExpect(jsonPath("$.details[0].message").doesNotHaveJsonPath());
 			}
 		}
