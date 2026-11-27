@@ -4,13 +4,13 @@ A composição reaproveita o perfil Maven `integration` do backend P2. Um único
 
 ## Base da integração
 
-A branch parte de `develop` em `076a5ae`.
+A integração começou em `076a5ae` e incorporou a `develop` de `5db7d4f`, que trouxe a Sprint 4 do P1.
 
-| Pessoa | Sprints já presentes na base, em ordem | PR pendente na base |
-| --- | --- | --- |
-| P1 | Sprint 1 via `57767b3` (#2), Sprint 2 via `e510adc` (#4), Sprint 3 via `16dd845` (#5) | Sprint 4 (#7), ponta `ed0e6ab`. Esta integração reaproveita o limite de login atrás do proxy. |
-| P2 | `21ae327` (#11), `3c17e53` (#13), `a9972fe` (#17), `076a5ae` (#16) | — |
-| P3 | `7fc19f5` (#9), `36520ad` (#10), `9274902` (#12), `18acff2` (#15) | — |
+| Pessoa | Sprints presentes na base atualizada, em ordem |
+| --- | --- |
+| P1 | Sprint 1 via `57767b3` (#2), Sprint 2 via `e510adc` (#4), Sprint 3 via `16dd845` (#5), Sprint 4 via `5db7d4f` (#7) |
+| P2 | `21ae327` (#11), `3c17e53` (#13), `a9972fe` (#17), `076a5ae` (#16) |
+| P3 | `7fc19f5` (#9), `36520ad` (#10), `9274902` (#12), `18acff2` (#15) |
 
 ## Subir
 

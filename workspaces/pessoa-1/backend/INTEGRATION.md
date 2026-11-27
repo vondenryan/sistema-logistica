@@ -15,3 +15,11 @@ The fleet fake validates route and order snapshots before taking its in-memory r
 Scheduled order and route reconciliation retains pending work after failures and logs the object ID and safe error code, without exception payloads. Retry uses stable IDs; a 503 after local confirmation or assignment does not imply rollback. Run offline tests with `ROUTING_PROVIDER=fake`; never use the fake routing provider in production.
 
 The fake fleet release validates a completed route before freeing its one vehicle. It deduplicates releases by route, not by event ID or event payload; full event-level conflict and retry semantics remain for the real fleet adapter. The snapshot check and in-memory reservation update are not a distributed transaction.
+
+## Container and profile handoff
+
+Build `target/backend-1.0.0.jar` on the host with `./mvnw -o package`, then run `docker build -t pessoa1-backend:local .` from this directory. The image copies that JAR only, runs as numeric UID/GID 10001, and exposes 8080. Supply database connection settings and JWT secret at runtime; configure reachable OSRM and the operational freight tariff. The image and integration profile do not supply P2/P3 modules, credentials, migrations or demo seed. `DEMO_PASSWORD` is required only by the dev seed.
+
+Before bean instantiation, `prod`/`integration` reject mixed dev/test profiles and fake routing. They report missing beans for all seven external ports: `PartnerLookupPort`, `FleetAssignmentPort`, `FleetReleasePort`, `DeliveryCommandPort`, `DeliveryStatusPort`, `NotificationRequestPort` and `DocumentRequestPort`. Bean presence is necessary but does not prove an implementation is real, correct or compatible. Verify the actual providers and wiring, coordinate migrations, and run real-provider contract, security and end-to-end tests. No P2/P3 deliveries exist yet; integration startup and the full Sprint 4 flow cannot currently succeed.
+
+Integration bootstrap also requires an explicit real identity provisioning process for initial users and roles. The dev demo seed is intentionally inactive in integration and production; provisioning has not been implemented here.

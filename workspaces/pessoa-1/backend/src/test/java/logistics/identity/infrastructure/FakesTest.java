@@ -234,10 +234,18 @@ class FakesTest {
   void refusesMixedProductionAndDevelopmentProfiles() {
     var env = new org.springframework.mock.env.MockEnvironment();
     env.setActiveProfiles("dev", "prod");
-    assertThatThrownBy(() -> new SecurityConfig().profileGuard(env).afterPropertiesSet())
+    assertThatThrownBy(
+            () ->
+                ProfileGuard.validateProfiles(env)
+                    .postProcessBeanFactory(
+                        new org.springframework.beans.factory.support.DefaultListableBeanFactory()))
         .isInstanceOf(IllegalStateException.class);
     env.setActiveProfiles("test", "integration");
-    assertThatThrownBy(() -> new SecurityConfig().profileGuard(env).afterPropertiesSet())
+    assertThatThrownBy(
+            () ->
+                ProfileGuard.validateProfiles(env)
+                    .postProcessBeanFactory(
+                        new org.springframework.beans.factory.support.DefaultListableBeanFactory()))
         .isInstanceOf(IllegalStateException.class);
   }
 }
