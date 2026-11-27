@@ -1,8 +1,5 @@
 package br.com.sistemalogistica.pessoa2.contracts.v1;
 
-import contracts.v1.*;
-import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -19,7 +16,6 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import contracts.v1.AddressSnapshot;
 import contracts.v1.AssignmentRequest;
 import contracts.v1.AssignmentSnapshot;
 import contracts.v1.FleetAssignmentPort;
