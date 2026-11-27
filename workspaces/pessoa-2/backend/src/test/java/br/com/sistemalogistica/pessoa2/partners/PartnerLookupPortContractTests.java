@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
+import java.math.BigDecimal;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.UUID;
@@ -17,14 +18,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AddressSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.OriginSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.PartnerLookupPort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.StoreSnapshot;
+import contracts.v1.AddressSnapshot;
+import contracts.v1.OriginSnapshot;
+import contracts.v1.PartnerLookupPort;
+import contracts.v1.StoreSnapshot;
 import br.com.sistemalogistica.pessoa2.origins.CreateOriginRequest;
 import br.com.sistemalogistica.pessoa2.origins.OriginService;
 import br.com.sistemalogistica.pessoa2.origins.OriginType;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ContractException;
 import br.com.sistemalogistica.pessoa2.stores.CreateStoreRequest;
 import br.com.sistemalogistica.pessoa2.stores.StoreService;
 
@@ -37,7 +38,7 @@ class PartnerLookupPortContractTests {
 			new br.com.sistemalogistica.pessoa2.origins.AddressSnapshot(
 					"Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", -26.48, -49.07);
 	private static final AddressSnapshot CONTRACT_ADDRESS =
-			new AddressSnapshot("Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", -26.48, -49.07);
+			new AddressSnapshot("Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", new BigDecimal("-26.48"), new BigDecimal("-49.07"));
 
 	@Autowired
 	private PartnerLookupPort partnerLookupPort;
@@ -47,6 +48,14 @@ class PartnerLookupPortContractTests {
 
 	@Autowired
 	private OriginService originService;
+
+	@Test
+	void satisfiesPartnerLookupContract() {
+		var store = storeService.create(new CreateStoreRequest("Shared contract " + UUID.randomUUID(), true));
+		var active = originService.create(new CreateOriginRequest(OriginType.STORE, store.id(), ORIGIN_ADDRESS, true));
+		var inactive = originService.create(new CreateOriginRequest(OriginType.DISTRIBUTION_CENTER, store.id(), ORIGIN_ADDRESS, false));
+		contracts.v1.PartnerLookupContract.verify(partnerLookupPort, active.id(), inactive.id(), store.id(), UUID.randomUUID());
+	}
 
 	@Test
 	void returnsContractSnapshotsForExistingOriginAndStore() {
@@ -59,7 +68,7 @@ class PartnerLookupPortContractTests {
 
 		assertEquals(new OriginSnapshot(
 				origin.id(),
-				br.com.sistemalogistica.pessoa2.contracts.v1.OriginType.DISTRIBUTION_CENTER,
+				contracts.v1.OriginType.DISTRIBUTION_CENTER,
 				store.id(),
 				CONTRACT_ADDRESS,
 				true), originSnapshot);
@@ -85,8 +94,8 @@ class PartnerLookupPortContractTests {
 		ContractException storeException =
 				assertThrows(ContractException.class, () -> partnerLookupPort.getStore(UUID.randomUUID()));
 
-		assertEquals("NOT_FOUND", originException.getCode());
-		assertEquals("NOT_FOUND", storeException.getCode());
+		assertEquals("NOT_FOUND", originException.code());
+		assertEquals("NOT_FOUND", storeException.code());
 	}
 
 	@Test
@@ -97,7 +106,7 @@ class PartnerLookupPortContractTests {
 		assertArrayEquals(
 				new Class<?>[] {
 					UUID.class,
-					br.com.sistemalogistica.pessoa2.contracts.v1.OriginType.class,
+					contracts.v1.OriginType.class,
 					UUID.class,
 					AddressSnapshot.class,
 					boolean.class
@@ -109,7 +118,7 @@ class PartnerLookupPortContractTests {
 		assertArrayEquals(
 				new Class<?>[] {
 					String.class, String.class, String.class, String.class, String.class, String.class,
-					Double.class, Double.class
+					BigDecimal.class, BigDecimal.class
 				},
 				componentTypes(AddressSnapshot.class));
 		assertArrayEquals(new String[] {"id", "active", "name"}, componentNames(StoreSnapshot.class));

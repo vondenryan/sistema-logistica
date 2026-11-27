@@ -30,6 +30,6 @@ public class ContractException extends RuntimeException {
 		return new ContractException(
 				"VALIDATION_ERROR",
 				"Request validation failed.",
-				List.of(Map.of("field", field, "message", message)));
+				List.of(Map.of("field", field, "reason", message)));
 	}
 }

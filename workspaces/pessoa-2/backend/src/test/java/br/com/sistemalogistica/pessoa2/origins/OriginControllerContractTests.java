@@ -129,6 +129,31 @@ class OriginControllerContractTests {
 				.andExpect(jsonPath("$.code").value("FORBIDDEN"));
 	}
 
+	@Test
+	void rejectsOutOfRangeCoordinatesOnCreateAndPatch() throws Exception {
+		for (String[] invalid : new String[][] {
+				{"latitude", "-26.48", "-90.001"}, {"latitude", "-26.48", "90.001"},
+				{"longitude", "-49.07", "-180.001"}, {"longitude", "-49.07", "180.001"}
+		}) {
+			String address = VALID_ADDRESS.replace(invalid[1], invalid[2]);
+			for (var request : List.of(post("/api/v1/origins"),
+					patch("/api/v1/origins/{originId}", UUID.randomUUID()))) {
+				mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON)
+								.content("{\"type\":\"STORE\",\"storeId\":\"" + UUID.randomUUID()
+										+ "\",\"address\":" + address + ",\"active\":true}"))
+						.andExpect(status().isBadRequest())
+						.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+						.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+						.andExpect(jsonPath("$.details.length()").value(1))
+						.andExpect(jsonPath("$.details[0].field").value("address." + invalid[0]))
+						.andExpect(jsonPath("$.details[0].reason").isNotEmpty())
+						.andExpect(jsonPath("$.details[0].message").doesNotHaveJsonPath());
+			}
+		}
+		verify(service, never()).create(any(CreateOriginRequest.class));
+		verify(service, never()).patch(any(UUID.class), any(PatchOriginRequest.class));
+	}
+
 	private OriginSnapshot snapshot(UUID originId, UUID storeId, boolean active) {
 		return new OriginSnapshot(
 				originId,

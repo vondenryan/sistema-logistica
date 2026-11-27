@@ -6,19 +6,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AddressSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.OriginSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.OriginType;
-import br.com.sistemalogistica.pessoa2.contracts.v1.StoreSnapshot;
+import contracts.v1.AddressSnapshot;
+import contracts.v1.OriginSnapshot;
+import contracts.v1.OriginType;
+import contracts.v1.StoreSnapshot;
 import br.com.sistemalogistica.pessoa2.origins.Origin;
 import br.com.sistemalogistica.pessoa2.origins.OriginRepository;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ContractException;
 import br.com.sistemalogistica.pessoa2.stores.Store;
 import br.com.sistemalogistica.pessoa2.stores.StoreRepository;
 
@@ -51,7 +52,7 @@ class PartnerLookupAdapterTests {
 				OriginType.DISTRIBUTION_CENTER,
 				storeId,
 				new AddressSnapshot(
-						"Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", -26.48, -49.07),
+						"Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", new BigDecimal("-26.48"), new BigDecimal("-49.07")),
 				false), snapshot);
 		verify(originRepository).findById(origin.getId());
 	}
@@ -74,7 +75,7 @@ class PartnerLookupAdapterTests {
 		when(originRepository.findById(originId)).thenReturn(Optional.empty());
 		when(storeRepository.findById(storeId)).thenReturn(Optional.empty());
 
-		assertEquals("NOT_FOUND", assertThrows(ContractException.class, () -> adapter.getOrigin(originId)).getCode());
-		assertEquals("NOT_FOUND", assertThrows(ContractException.class, () -> adapter.getStore(storeId)).getCode());
+		assertEquals("NOT_FOUND", assertThrows(ContractException.class, () -> adapter.getOrigin(originId)).code());
+		assertEquals("NOT_FOUND", assertThrows(ContractException.class, () -> adapter.getStore(storeId)).code());
 	}
 }

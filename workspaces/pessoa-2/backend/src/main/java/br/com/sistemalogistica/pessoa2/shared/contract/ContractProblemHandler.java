@@ -28,6 +28,11 @@ public class ContractProblemHandler {
 		return problem(status, exception.getCode(), exception.getMessage(), exception.getDetails());
 	}
 
+	@ExceptionHandler(contracts.v1.ContractException.class)
+	public ResponseEntity<ProblemDetail> handleV1Exception(contracts.v1.ContractException exception) {
+		return problem(statusFor(exception.code()), exception.code(), exception.getMessage(), exception.details());
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ProblemDetail> handleInvalidBody(MethodArgumentNotValidException exception) {
 		List<Map<String, Object>> details = exception.getBindingResult().getFieldErrors().stream()
@@ -42,7 +47,7 @@ public class ContractProblemHandler {
 				HttpStatus.BAD_REQUEST,
 				"VALIDATION_ERROR",
 				"Request validation failed.",
-				List.of(Map.of("field", "request", "message", "A request parameter is invalid.")));
+				List.of(Map.of("field", "request", "reason", "A request parameter is invalid.")));
 	}
 
 	@ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
@@ -51,20 +56,20 @@ public class ContractProblemHandler {
 				HttpStatus.BAD_REQUEST,
 				"VALIDATION_ERROR",
 				"Request body or path parameter is invalid.",
-				List.of(Map.of("field", "request", "message", "The request could not be parsed.")));
+				List.of(Map.of("field", "request", "reason", "The request could not be parsed.")));
 	}
 
 	private Map<String, Object> fieldDetail(FieldError error) {
 		return Map.of(
 				"field", error.getField(),
-				"message", error.getDefaultMessage() == null ? "Invalid value." : error.getDefaultMessage());
+				"reason", error.getDefaultMessage() == null ? "Invalid value." : error.getDefaultMessage());
 	}
 
 	private ResponseEntity<ProblemDetail> problem(
 			HttpStatus status,
 			String code,
 			String detail,
-			List<Map<String, Object>> details) {
+			List<?> details) {
 		ProblemDetail body = ProblemDetail.forStatus(status);
 		body.setType(URI.create("https://example.invalid/problems/" + code.toLowerCase().replace('_', '-')));
 		body.setTitle(status.getReasonPhrase());

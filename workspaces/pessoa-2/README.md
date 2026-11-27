@@ -62,3 +62,8 @@ O POST recebe `{name,contactEmail?,storeId}`. `name` é obrigatório (máximo 16
 Somente `ADMIN` e `OPERATOR` podem listar, criar ou atualizar fornecedores. `STORE` recebe 403 na listagem, criação e atualização e só consulta fornecedores vinculados à própria loja; outro fornecedor fora do escopo retorna 404. `DRIVER` recebe 403.
 
 **Pontos em aberto/decisões locais:** o contrato não define como `active` aparece nas respostas de fornecedor, portanto esta implementação não expõe `active`; a inativação com `{"active":false}` fica interna e não exclui fisicamente nem deixa o fornecedor invisível. O PATCH não consegue apagar `contactEmail`: `contactEmail:null` é rejeitado com 400 e o campo omitido preserva o valor atual. IDs inválidos em GET/PATCH retornam 400 `VALIDATION_ERROR`.
+
+
+O adaptador de parceiros usa `contracts.v1.PartnerLookupPort` e converte as coordenadas para `BigDecimal` na interface entre módulos. Os workspaces P1 e P2 mantêm cópias idênticas dos tipos da porta e da verificação de contrato para continuar executando de forma independente. O CI compara essas cópias e executa a verificação tanto no fake do P1 quanto no adaptador PostgreSQL do P2.
+
+O CI provisiona PostgreSQL 16 para os testes do P2 com os valores locais padrão do workspace. A API de origens valida latitude entre −90 e 90 e longitude entre −180 e 180 em POST e PATCH. Os erros com detalhes de campo usam `details[].field` e `details[].reason`.

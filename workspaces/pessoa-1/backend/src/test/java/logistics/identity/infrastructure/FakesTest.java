@@ -14,6 +14,16 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.*;
 
 class FakesTest {
+  @Test
+  void satisfiesPartnerLookupContract() {
+    PartnerLookupContract.verify(
+        fixture(),
+        Fixtures.ORIGIN,
+        UUID.fromString("11111111-1111-4111-8111-111111111113"),
+        Fixtures.STORE,
+        UUID.randomUUID());
+  }
+
   @SuppressWarnings("unchecked")
   Fixtures fixture() {
     return fixture(new java.util.concurrent.atomic.AtomicReference<>(RouteStatus.PLANNED));
