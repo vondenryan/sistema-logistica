@@ -124,6 +124,7 @@
 											<directory>../../pessoa-1/backend/src/main/java</directory>
 											<excludes>
 												<exclude>logistics/Application.java</exclude>
+<<<<<<< HEAD
 												<exclude>contracts/v1/AddressSnapshot.java</exclude>
 												<exclude>contracts/v1/AssignmentRequest.java</exclude>
 												<exclude>contracts/v1/AssignmentSnapshot.java</exclude>
@@ -141,6 +142,25 @@
 												<exclude>contracts/v1/RouteSnapshotPort.java</exclude>
 												<exclude>contracts/v1/RouteStatus.java</exclude>
 												<exclude>contracts/v1/StoreSnapshot.java</exclude>
+=======
+																<exclude>contracts/v1/AddressSnapshot.java</exclude>
+																<exclude>contracts/v1/ContractException.java</exclude>
+																<exclude>contracts/v1/OriginSnapshot.java</exclude>
+																<exclude>contracts/v1/OriginType.java</exclude>
+																<exclude>contracts/v1/PartnerLookupPort.java</exclude>
+																<exclude>contracts/v1/StoreSnapshot.java</exclude>
+																<exclude>contracts/v1/AssignmentRequest.java</exclude>
+																<exclude>contracts/v1/AssignmentSnapshot.java</exclude>
+																<exclude>contracts/v1/FleetAssignmentPort.java</exclude>
+																<exclude>contracts/v1/FleetReleasePort.java</exclude>
+																<exclude>contracts/v1/FleetType.java</exclude>
+																<exclude>contracts/v1/ReleaseReason.java</exclude>
+																<exclude>contracts/v1/ReleaseReceipt.java</exclude>
+																<exclude>contracts/v1/ReleaseRequest.java</exclude>
+																<exclude>contracts/v1/RouteSnapshot.java</exclude>
+																<exclude>contracts/v1/RouteSnapshotPort.java</exclude>
+																<exclude>contracts/v1/RouteStatus.java</exclude>
+>>>>>>> origin/feat/p2-sprint-4
 											</excludes>
 										</resource>
 										<resource>

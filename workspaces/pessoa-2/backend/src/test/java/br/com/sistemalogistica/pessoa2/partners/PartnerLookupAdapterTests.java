@@ -2,6 +2,10 @@ package br.com.sistemalogistica.pessoa2.partners;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+<<<<<<< HEAD
+=======
+import static org.junit.jupiter.api.Assertions.assertTrue;
+>>>>>>> origin/feat/p2-sprint-4
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,6 +62,27 @@ class PartnerLookupAdapterTests {
 	}
 
 	@Test
+<<<<<<< HEAD
+=======
+	void mapsActiveOriginToV1Snapshot() {
+		UUID storeId = UUID.randomUUID();
+		Origin origin = new Origin(
+				br.com.sistemalogistica.pessoa2.origins.OriginType.STORE,
+				storeId,
+				new br.com.sistemalogistica.pessoa2.origins.AddressSnapshot(
+						"Rua Exemplo, 100", null, "Cidade Fictícia", "SC", "00000-000", "BR", -26.48, -49.07),
+				true);
+		when(originRepository.findById(origin.getId())).thenReturn(Optional.of(origin));
+
+		OriginSnapshot snapshot = adapter.getOrigin(origin.getId());
+
+		assertEquals(origin.getId(), snapshot.id());
+		assertEquals(storeId, snapshot.storeId());
+		assertTrue(snapshot.active());
+	}
+
+	@Test
+>>>>>>> origin/feat/p2-sprint-4
 	void mapsStoreToContractSnapshot() {
 		Store store = new Store("Loja inativa", false);
 		when(storeRepository.findById(store.getId())).thenReturn(Optional.of(store));

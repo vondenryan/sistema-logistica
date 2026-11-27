@@ -5,6 +5,7 @@ import json
 import os
 from threading import Barrier
 from urllib.error import HTTPError
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
@@ -15,7 +16,7 @@ OWN_DRIVER = "55555555-5555-4555-8555-555555555555"
 OWN_VEHICLE = "66666666-6666-4666-8666-666666666666"
 
 
-def request(path, *, token=None, body=None, statuses=(200,), code=None, headers=None):
+def request(path, *, token=None, body=None, statuses=(200,), code=None, headers=None, method=None):
     headers = dict(headers or {})
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -24,7 +25,7 @@ def request(path, *, token=None, body=None, statuses=(200,), code=None, headers=
         headers["Content-Type"] = "application/json"
         data = json.dumps(body).encode()
     try:
-        response = urlopen(Request(BASE + path, data=data, headers=headers), timeout=15)
+        response = urlopen(Request(BASE + path, data=data, headers=headers, method=method), timeout=15)
     except HTTPError as error:
         response = error
     with response:
@@ -50,6 +51,7 @@ def main():
     request(origin_path, headers={"X-Dev-Role": "ADMIN"}, statuses=(401,), code="UNAUTHENTICATED")
     request(origin_path, token="invalid-token", statuses=(401,), code="UNAUTHENTICATED")
     request(origin_path, token=other_store, statuses=(404,), code="NOT_FOUND")
+    request("/vehicles", statuses=(401,), code="UNAUTHENTICATED")
     request("/vehicles", token=other_store, statuses=(403,), code="FORBIDDEN")
     _, origin = request(origin_path, token=admin)
     assert origin["storeId"] == STORE and origin["active"]
@@ -76,6 +78,13 @@ def main():
         order_id = order["orderId"]
         _, confirmed = request(f"/orders/{order_id}/confirm", token=admin, body={})
         assert confirmed["status"] == "CONFIRMED"
+        tracking_path = f"/tracking/{quote(order['trackingCode'], safe='')}"
+        _, tracking = request(tracking_path)
+        assert set(tracking) == {"status", "milestones"}
+        assert tracking["status"] == "PENDING"
+        assert tracking["milestones"]
+        assert all(set(event) == {"status", "at"} for event in tracking["milestones"])
+        request(tracking_path, method="POST", body={}, statuses=(401,), code="UNAUTHENTICATED")
         _, route = request("/routes", token=admin, statuses=(201,), body={
             "originId": new_origin["id"], "orderIds": [order_id],
         })
@@ -89,6 +98,8 @@ def main():
         return request(f"/fleet/assignments/{route_id}", token=admin, **kwargs)[1]
 
     request(f"/routes/{uuid4()}/assign", token=admin, body={}, statuses=(404,), code="NOT_FOUND")
+    request(f"/tracking/TRK-{uuid4().hex}", statuses=(404,), code="NOT_FOUND")
+    request("/tracking/extra/segments", statuses=(401,), code="UNAUTHENTICATED")
     route = make_route("40.000")
     assign(route, (403,), token=other_store)
     _, assigned = assign(route)

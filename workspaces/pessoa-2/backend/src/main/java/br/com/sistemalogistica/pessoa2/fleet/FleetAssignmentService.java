@@ -5,7 +5,6 @@ import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,7 +12,6 @@ import contracts.v1.AssignmentRequest;
 import contracts.v1.AssignmentSnapshot;
 import contracts.v1.FleetAssignmentPort;
 import contracts.v1.FleetReleasePort;
-import contracts.v1.FleetType;
 import contracts.v1.ReleaseReceipt;
 import contracts.v1.ReleaseRequest;
 import contracts.v1.RouteSnapshotPort;
@@ -23,6 +21,7 @@ import contracts.v1.ContractException;
 @Service
 public class FleetAssignmentService implements FleetAssignmentPort, FleetReleasePort {
 
+<<<<<<< HEAD
 	private static final int MAX_RESERVATION_ATTEMPTS = 5;
 	private static final String ROUTE_UNIQUE_INDEX = "ux_fleet_assignments_route_id";
 	private static final String ACTIVE_DRIVER_INDEX = "ux_fleet_assignments_active_driver";
@@ -31,18 +30,27 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 
 	private final FleetAssignmentRepository assignmentRepository;
 	private final FleetReleaseEventRepository releaseEventRepository;
+=======
+	private final FleetAssignmentRepository assignmentRepository;
+>>>>>>> origin/feat/p2-sprint-4
 	private final FleetAssignmentTransactionService transactionService;
 	private final RouteSnapshotPort routeSnapshotPort;
 	private final CurrentActorPort currentActorPort;
 
 	public FleetAssignmentService(
 			FleetAssignmentRepository assignmentRepository,
+<<<<<<< HEAD
 			FleetReleaseEventRepository releaseEventRepository,
+=======
+>>>>>>> origin/feat/p2-sprint-4
 			FleetAssignmentTransactionService transactionService,
 			RouteSnapshotPort routeSnapshotPort,
 			CurrentActorPort currentActorPort) {
 		this.assignmentRepository = assignmentRepository;
+<<<<<<< HEAD
 		this.releaseEventRepository = releaseEventRepository;
+=======
+>>>>>>> origin/feat/p2-sprint-4
 		this.transactionService = transactionService;
 		this.routeSnapshotPort = routeSnapshotPort;
 		this.currentActorPort = currentActorPort;
@@ -51,6 +59,7 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 	@Override
 	public AssignmentSnapshot assign(AssignmentRequest request) {
 		validateAssignmentRequest(request);
+<<<<<<< HEAD
 		for (int attempt = 1; ; attempt++) {
 			try {
 				return transactionService.reserve(request);
@@ -66,11 +75,15 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 				// The failed reservation has rolled back. Select again in a fresh transaction.
 			}
 		}
+=======
+		return transactionService.reserve(request);
+>>>>>>> origin/feat/p2-sprint-4
 	}
 
 	@Override
 	public ReleaseReceipt release(ReleaseRequest request) {
 		validateReleaseRequest(request);
+<<<<<<< HEAD
 		try {
 			return transactionService.release(request);
 		} catch (DataIntegrityViolationException exception) {
@@ -87,6 +100,9 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 			}
 			return new ReleaseReceipt(request.routeId(), false);
 		}
+=======
+		return transactionService.release(request);
+>>>>>>> origin/feat/p2-sprint-4
 	}
 
 	@Transactional(readOnly = true)
@@ -125,10 +141,6 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 		}
 	}
 
-	private static ContractException validation(String field, String reason) {
-		return new ContractException("VALIDATION_ERROR", List.of(Map.of("field", field, "reason", reason)));
-	}
-
 	private static void validateReleaseRequest(ReleaseRequest request) {
 		if (request == null) {
 			throw validation("request", "MUST_NOT_BE_NULL");
@@ -144,8 +156,9 @@ public class FleetAssignmentService implements FleetAssignmentPort, FleetRelease
 		}
 	}
 
-	private static ContractException idempotencyConflict() {
-		return new ContractException("IDEMPOTENCY_CONFLICT");
+	private static ContractException validation(String field, String reason) {
+		return new ContractException("VALIDATION_ERROR",
+				List.of(Map.of("field", field, "reason", reason)));
 	}
 
 	private static ContractException notFound() {

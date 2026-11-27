@@ -1,5 +1,8 @@
 package br.com.sistemalogistica.pessoa2.contracts.v1;
 
+import contracts.v1.*;
+import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -7,10 +10,14 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+<<<<<<< HEAD
 import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
 import contracts.v1.ContractException;
 import contracts.v1.RouteSnapshot;
 import contracts.v1.RouteStatus;
+=======
+import contracts.v1.ContractException;
+>>>>>>> origin/feat/p2-sprint-4
 
 class FakeRouteSnapshotAdapterTests {
 

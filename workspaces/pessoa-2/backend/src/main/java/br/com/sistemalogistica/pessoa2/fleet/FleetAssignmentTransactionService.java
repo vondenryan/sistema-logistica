@@ -25,6 +25,10 @@ import contracts.v1.ReleaseRequest;
 import contracts.v1.RouteSnapshot;
 import contracts.v1.RouteSnapshotPort;
 import contracts.v1.RouteStatus;
+<<<<<<< HEAD
+=======
+import contracts.v1.ContractException;
+>>>>>>> origin/feat/p2-sprint-4
 
 @Service
 public class FleetAssignmentTransactionService {

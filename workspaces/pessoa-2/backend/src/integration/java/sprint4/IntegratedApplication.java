@@ -1,6 +1,11 @@
 package sprint4;
 
 import br.com.sistemalogistica.pessoa2.Pessoa2BackendApplication;
+<<<<<<< HEAD
+=======
+import br.com.sistemalogistica.pessoa2.security.ActorContext;
+import br.com.sistemalogistica.pessoa2.security.Role;
+>>>>>>> origin/feat/p2-sprint-4
 import br.com.sistemalogistica.pessoa2.fleet.RouteCapacityValidator;
 import contracts.v1.ContractException;
 import contracts.v1.CurrentActorPort;
@@ -26,6 +31,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -47,6 +58,17 @@ public class IntegratedApplication {
         SpringApplication app = new SpringApplication(IntegratedApplication.class);
         app.setAdditionalProfiles("integration");
         app.run(args);
+    }
+
+    @Bean
+    @Order(1)
+    SecurityFilterChain publicTracking(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher(PathPatternRequestMatcher.withDefaults()
+                .matcher(HttpMethod.GET, "/api/v1/tracking/{code}"))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+            .build();
     }
 
     @Bean
@@ -114,7 +136,15 @@ public class IntegratedApplication {
     }
 
     @Bean
+<<<<<<< HEAD
     IntegratedPorts integratedPorts(CurrentActorPort actor) {
         return new IntegratedPorts(actor);
+=======
+    br.com.sistemalogistica.pessoa2.security.CurrentActorPort partnerActor(CurrentActorPort identity) {
+        return () -> {
+            var actor = identity.requireActor();
+            return new ActorContext(actor.actorId(), Role.valueOf(actor.role().name()), actor.storeId(), actor.driverId());
+        };
+>>>>>>> origin/feat/p2-sprint-4
     }
 }
