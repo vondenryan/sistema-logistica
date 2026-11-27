@@ -6,23 +6,26 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.AssignmentSnapshot;
+import contracts.v1.FleetType;
 import contracts.v1.PartnerLookupPort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReason;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseReceipt;
-import br.com.sistemalogistica.pessoa2.contracts.v1.ReleaseRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.RouteSnapshot;
-import br.com.sistemalogistica.pessoa2.contracts.v1.RouteSnapshotPort;
-import br.com.sistemalogistica.pessoa2.contracts.v1.RouteStatus;
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import contracts.v1.ReleaseReason;
+import contracts.v1.ReleaseReceipt;
+import contracts.v1.ReleaseRequest;
+import contracts.v1.RouteSnapshot;
+import contracts.v1.RouteSnapshotPort;
+import contracts.v1.RouteStatus;
+import contracts.v1.ContractException;
 
 @Service
 public class FleetAssignmentTransactionService {
@@ -49,18 +52,27 @@ public class FleetAssignmentTransactionService {
 		this.partnerLookupPort = partnerLookupPort;
 	}
 
-	@Transactional
+	@Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
 	public AssignmentSnapshot reserve(AssignmentRequest request) {
+		var previous = existingReservation(request);
+		if (previous.isPresent()) {
+			return previous.get();
+		}
 		RouteSnapshot route = routeSnapshotPort.getById(request.routeId());
 		if (route.status() != RouteStatus.PLANNED) {
-			throw new ContractException("CONFLICT", "Only PLANNED routes can be assigned.");
+			throw new ContractException("CONFLICT");
 		}
 		if (!route.originId().equals(request.originId())) {
-			throw new ContractException("PRECONDITION_FAILED", "The requested origin does not match the route.");
+			throw new ContractException("PRECONDITION_FAILED");
 		}
 		partnerLookupPort.getOrigin(request.originId());
 
-		Selection selection = selectResources(request);
+		var available = selectResources(request);
+		if (available.isEmpty()) {
+			// The same route may have reserved the last pair after our first lookup.
+			return existingReservation(request).orElseThrow(FleetAssignmentTransactionService::noEligible);
+		}
+		Selection selection = available.get();
 		FleetAssignment assignment = assignmentRepository.saveAndFlush(new FleetAssignment(
 				UUID.randomUUID(),
 				request,
@@ -75,15 +87,11 @@ public class FleetAssignmentTransactionService {
 	public ReleaseReceipt release(ReleaseRequest request) {
 		RouteSnapshot route = routeSnapshotPort.getById(request.routeId());
 		if (request.reason() == ReleaseReason.ROUTE_CANCELLED) {
-			throw new ContractException(
-					"PRECONDITION_FAILED",
-					"Fleet reservations cannot be released for route cancellation before that rule is approved.");
+			throw new ContractException("PRECONDITION_FAILED");
 		}
 		if (request.reason() == ReleaseReason.ROUTE_COMPLETED
 				&& route.status() != RouteStatus.COMPLETED) {
-			throw new ContractException(
-					"PRECONDITION_FAILED",
-					"A fleet reservation can only be released after the route is completed.");
+			throw new ContractException("PRECONDITION_FAILED");
 		}
 
 		FleetReleaseEvent existingEvent = releaseEventRepository.findById(request.eventId()).orElse(null);
@@ -106,7 +114,7 @@ public class FleetAssignmentTransactionService {
 		return new ReleaseReceipt(request.routeId(), released);
 	}
 
-	private Selection selectResources(AssignmentRequest request) {
+	private Optional<Selection> selectResources(AssignmentRequest request) {
 		List<FleetAssignment> activeAssignments = assignmentRepository.findAllByReleasedAtIsNull();
 		Set<UUID> reservedDriverIds = new HashSet<>();
 		Set<UUID> reservedVehicleIds = new HashSet<>();
@@ -145,8 +153,18 @@ public class FleetAssignmentTransactionService {
 		}
 
 		return !ownFleet.isEmpty()
-				? ownFleet.stream().min(stableOrder).orElseThrow()
-				: thirdPartyFleet.stream().min(stableOrder).orElseThrow(FleetAssignmentTransactionService::noEligible);
+				? ownFleet.stream().min(stableOrder)
+				: thirdPartyFleet.stream().min(stableOrder);
+	}
+
+	private Optional<AssignmentSnapshot> existingReservation(AssignmentRequest request) {
+		return assignmentRepository.findByRouteId(request.routeId()).map(assignment -> {
+			if (!assignment.getOriginId().equals(request.originId())
+					|| assignment.getRequiredCapacityKg().compareTo(request.requiredCapacityKg()) != 0) {
+				throw idempotencyConflict();
+			}
+			return snapshot(assignment);
+		});
 	}
 
 	private static AssignmentSnapshot snapshot(FleetAssignment assignment) {
@@ -160,15 +178,15 @@ public class FleetAssignmentTransactionService {
 	}
 
 	private static ContractException noEligible() {
-		return new ContractException("NO_ELIGIBLE_RESOURCE", "No eligible driver and vehicle are available.");
+		return new ContractException("NO_ELIGIBLE_RESOURCE");
 	}
 
 	private static ContractException idempotencyConflict() {
-		return new ContractException("IDEMPOTENCY_CONFLICT", "The event ID was already used with a different payload.");
+		return new ContractException("IDEMPOTENCY_CONFLICT");
 	}
 
 	private static ContractException notFound() {
-		return new ContractException("NOT_FOUND", "Fleet assignment was not found.");
+		return new ContractException("NOT_FOUND");
 	}
 
 	private record Selection(Driver driver, Vehicle vehicle) {

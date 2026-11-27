@@ -71,14 +71,11 @@ npm run build
 
 | Execução | Resultado |
 |---|---|
-| Local — JSON v1 e fake de rotas | `mvnw.cmd --batch-mode "-DargLine=-Xms32m -Xmx192m -XX:+UseSerialGC" "-Dtest=FleetContractJsonTests,FakeRouteSnapshotAdapterTests" test` — 5 testes passaram. |
-| Local — PartnerLookup e validação de origem | `mvnw.cmd --batch-mode "-DargLine=-Xms32m -Xmx192m -XX:+UseSerialGC" "-Dtest=PartnerLookupAdapterTests,OriginControllerContractTests" test` — 11 testes passaram. |
-| Local — contratos HTTP dos cadastros de frota | `mvnw.cmd --batch-mode "-DargLine=-Xms32m -Xmx192m -XX:+UseSerialGC" "-Dtest=FleetControllerContractTests" test` — 6 testes passaram. |
-| Local — suíte backend completa e integração PostgreSQL | **Não executada nesta validação**: não havia PostgreSQL em `localhost:55432` nem daemon Docker disponível. Os testes de integração de atribuição, capacidade, concorrência e persistência não são declarados aprovados localmente. |
-| Local — frontend | `npm test` — 16 arquivos/51 testes passaram; `npm run build` — passou. |
-| CI — workflow `backend-ci.yml` | **Não executado/não verificado nesta validação**; não declarar aprovado. O workflow configura PostgreSQL 16, mas uma execução da branch é necessária para evidência de CI. |
+| Local — suíte completa backend + PostgreSQL | `.\mvnw.cmd --batch-mode -DfailIfNoTests=true test` com PostgreSQL 16 (`docker compose up -d --wait`) — **91 testes passaram** (0 falhas, 0 erros, 0 ignorados), incluindo `FleetContractJsonTests`, `FakeRouteSnapshotAdapterTests`, `PartnerLookupAdapterTests`, `PartnerLookupPortContractTests`, `OriginControllerContractTests`, `FleetControllerContractTests`, `FleetAssignmentIntegrationTests` e testes de persistência/autorização. |
+| Local — frontend | `npm ci && npm test && npm run build` — **16 arquivos / 51 testes passaram**; build `vue-tsc -b && vite build` aprovado. |
+| CI — workflow `backend-ci.yml` | Será validado pelo GitHub Actions ao abrir o PR `feat/p2-sprint-3` → `develop`. |
 
-Os testes de contrato usam fixtures JSON v1, exercitam a serialização do `PartnerLookupPort` e `FleetAssignmentPort`, e cobrem a tabela estática do fake de rotas. A suíte de integração já contém verificações de atribuição, capacidade, idempotência, conflito e concorrência; ela continua pendente de execução local ou CI com PostgreSQL. A execução integrada requer apenas o PostgreSQL local do workspace; não depende de serviços da Pessoa 1 ou Pessoa 3.
+Os testes de contrato usam fixtures JSON v1, exercitam a serialização do `PartnerLookupPort`, `RouteSnapshotPort` e `FleetAssignmentPort`, e cobrem a tabela estática do fake de rotas. A suíte de integração cobre atribuição, capacidade, idempotência, conflito, liberação e concorrência com PostgreSQL 16 local, sem depender de serviços da Pessoa 1 ou Pessoa 3.
 
 ## Integração futura
 

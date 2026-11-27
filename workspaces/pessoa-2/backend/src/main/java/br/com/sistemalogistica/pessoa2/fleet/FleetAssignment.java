@@ -11,8 +11,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import br.com.sistemalogistica.pessoa2.contracts.v1.AssignmentRequest;
-import br.com.sistemalogistica.pessoa2.contracts.v1.FleetType;
+import contracts.v1.AssignmentRequest;
+import contracts.v1.FleetType;
 
 @Entity
 @Table(name = "fleet_assignments")

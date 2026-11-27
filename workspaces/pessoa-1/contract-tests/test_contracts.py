@@ -57,6 +57,14 @@ class ContractTests(unittest.TestCase):
         data['details'] = [{'field': 'requiredCapacityKg', 'reason': 'MUST_BE_POSITIVE'}]
         validator('problem').validate(data)
 
+    def test_error_details_require_field_and_reason(self):
+        for item in ('invalid', {}, {'field': 'name', 'message': 'required'},
+                     {'field': 'name', 'reason': 42}, {'reason': 'required'}):
+            with self.subTest(item=item):
+                data = fixture('problem')
+                data['details'] = [item]
+                self.assertFalse(validator('problem').is_valid(data))
+
     def test_origin_requires_store_even_distribution_center(self):
         data = fixture('origin')
         data['type'] = 'DISTRIBUTION_CENTER'

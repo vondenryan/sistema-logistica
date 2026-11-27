@@ -7,7 +7,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
+import br.com.sistemalogistica.pessoa2.fleet.FakeRouteSnapshotAdapter;
+import contracts.v1.ContractException;
+import contracts.v1.RouteSnapshot;
+import contracts.v1.RouteStatus;
 
 class FakeRouteSnapshotAdapterTests {
 
@@ -33,6 +36,6 @@ class FakeRouteSnapshotAdapterTests {
 		ContractException exception =
 				assertThrows(ContractException.class, () -> adapter.getById(UUID.randomUUID()));
 
-		assertEquals("NOT_FOUND", exception.getCode());
+		assertEquals("NOT_FOUND", exception.code());
 	}
 }

@@ -1,10 +1,9 @@
 package contracts.v1;
 
-import java.util.UUID;
+import java.util.*;
 
 public interface PartnerLookupPort {
+  OriginSnapshot getOrigin(UUID originId);
 
-	OriginSnapshot getOrigin(UUID originId);
-
-	StoreSnapshot getStore(UUID storeId);
+  StoreSnapshot getStore(UUID storeId);
 }

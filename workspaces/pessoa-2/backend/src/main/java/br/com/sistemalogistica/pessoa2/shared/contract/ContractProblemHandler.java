@@ -28,6 +28,11 @@ public class ContractProblemHandler {
 		return problem(status, exception.getCode(), exception.getMessage(), exception.getDetails());
 	}
 
+	@ExceptionHandler(contracts.v1.ContractException.class)
+	public ResponseEntity<ProblemDetail> handleV1Exception(contracts.v1.ContractException exception) {
+		return problem(statusFor(exception.code()), exception.code(), exception.getMessage(), exception.details());
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ProblemDetail> handleInvalidBody(MethodArgumentNotValidException exception) {
 		List<Map<String, Object>> details = exception.getBindingResult().getFieldErrors().stream()
@@ -79,7 +84,7 @@ public class ContractProblemHandler {
 			HttpStatus status,
 			String code,
 			String detail,
-			List<Map<String, Object>> details) {
+			List<?> details) {
 		ProblemDetail body = ProblemDetail.forStatus(status);
 		body.setType(URI.create("https://example.invalid/problems/" + code.toLowerCase().replace('_', '-')));
 		body.setTitle(status.getReasonPhrase());

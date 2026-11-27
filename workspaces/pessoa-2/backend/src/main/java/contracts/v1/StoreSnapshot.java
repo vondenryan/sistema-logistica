@@ -1,6 +1,7 @@
 package contracts.v1;
 
-import java.util.UUID;
+import java.math.*;
+import java.time.*;
+import java.util.*;
 
-public record StoreSnapshot(UUID id, boolean active, String name) {
-}
+public record StoreSnapshot(UUID id, boolean active, String name) {}
