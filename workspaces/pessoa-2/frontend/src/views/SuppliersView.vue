@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, formatApiError, listAllStores, type Store, type Supplier } from '../api'
-import { devActor, isDevMode, type DevRole } from '../devActor'
+import { currentRole, devActor, isDevMode, type DevRole } from '../devActor'
 import {
   canListPartners,
   canManagePartners,
@@ -40,10 +40,10 @@ const lookupLoading = ref(false)
 const lookupError = ref('')
 const lookupSupplier = ref<Supplier | null>(null)
 
-const role = computed(() => (isDevMode ? devActor.role : null))
+const role = computed(() => (currentRole.value))
 const canManage = computed(() => canManagePartners(role.value))
 const canList = computed(() => canListPartners(role.value))
-const isStoreProfile = computed(() => isDevMode && devActor.role === 'STORE')
+const isStoreProfile = computed(() => currentRole.value === 'STORE')
 const canReadById = computed(() => canReadPartnerById(role.value))
 const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 const canApplyProfile = computed(

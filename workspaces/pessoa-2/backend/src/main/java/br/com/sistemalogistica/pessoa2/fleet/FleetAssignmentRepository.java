@@ -14,6 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface FleetAssignmentRepository extends JpaRepository<FleetAssignment, UUID> {
 
+	@Query(value = "SELECT seed_key FROM workspace_seed WHERE seed_key = 'pessoa2-bootstrap-v1' FOR UPDATE",
+			nativeQuery = true)
+	String lockReservations();
+
 	Optional<FleetAssignment> findByRouteId(UUID routeId);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)

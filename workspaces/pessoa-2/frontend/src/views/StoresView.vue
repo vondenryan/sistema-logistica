@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, formatApiError, type Store } from '../api'
-import { devActor, isDevMode, type DevRole } from '../devActor'
+import { currentRole, currentStoreId, devActor, isDevMode, type DevRole } from '../devActor'
 import { canManageStores, isValidStoreId } from '../stores/storePolicy'
 import { validateStoreName } from '../stores/storeValidation'
 
@@ -26,8 +26,8 @@ const formName = ref('')
 const formError = ref('')
 const editingStore = ref<Store | null>(null)
 
-const canManage = computed(() => canManageStores(isDevMode ? devActor.role : null))
-const isStoreProfile = computed(() => isDevMode && devActor.role === 'STORE')
+const canManage = computed(() => canManageStores(currentRole.value))
+const isStoreProfile = computed(() => currentRole.value === 'STORE')
 const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 const canApplyProfile = computed(
   () => selectedRole.value !== 'STORE' || isValidStoreId(selectedStoreId.value),
@@ -55,13 +55,13 @@ async function loadStores() {
 
   try {
     if (isStoreProfile.value) {
-      if (!isValidStoreId(devActor.storeId)) {
+      if (!isValidStoreId(currentStoreId.value)) {
         stores.value = []
         totalItems.value = 0
         errorMessage.value = 'Informe um UUID válido para consultar a loja do perfil STORE.'
         return
       }
-      const store = await api.getStore(devActor.storeId)
+      const store = await api.getStore(currentStoreId.value)
       stores.value = [store]
       totalItems.value = 1
       page.value = 0

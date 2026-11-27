@@ -45,7 +45,7 @@ class DeliveryServicePortTest {
     fakeActor = new FakeCurrentActorPort();
 
     deliveryService =
-        new DeliveryService(deliveryRepository, fakeOrders, fakeRoutes, fakeActor);
+        new DeliveryService(deliveryRepository, fakeOrders, fakeRoutes, fakeRoutes, fakeActor);
 
     canonicalOrderId = FakeOrderSnapshotPort.CANONICAL_ORDER_ID;
     canonicalRouteId = FakeRouteSnapshotPort.CANONICAL_ROUTE_ID;

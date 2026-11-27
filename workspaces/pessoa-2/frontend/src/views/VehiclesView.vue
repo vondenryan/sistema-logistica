@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, listAllCarriers, type Carrier, type FleetType, type Vehicle } from '../api'
-import { isDevMode, devActor } from '../devActor'
+import { currentRole } from '../devActor'
 import { canManagePartners } from '../partners/partnerPolicy'
 import { formatFleetError } from '../fleet/fleetError'
 import {
@@ -29,7 +29,7 @@ const formFleetType = ref<FleetType>('OWN')
 const formCarrierId = ref('')
 const editingVehicle = ref<Vehicle | null>(null)
 
-const role = computed(() => (isDevMode ? devActor.role : null))
+const role = computed(() => (currentRole.value))
 const canManage = computed(() => canManagePartners(role.value))
 const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 

@@ -1,6 +1,6 @@
-import type { DevRole } from '../devActor'
+import type { Role } from '../devActor'
 
-export function canManageStores(role: DevRole | null): boolean {
+export function canManageStores(role: Role | null): boolean {
   return role === 'ADMIN' || role === 'OPERATOR'
 }
 

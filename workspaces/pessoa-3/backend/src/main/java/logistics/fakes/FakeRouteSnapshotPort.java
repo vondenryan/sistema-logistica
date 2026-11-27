@@ -1,6 +1,7 @@
 package logistics.fakes;
 
 import contracts.v1.ContractException;
+import contracts.v1.DriverRouteLookupPort;
 import contracts.v1.RouteSnapshot;
 import contracts.v1.RouteSnapshotPort;
 import contracts.v1.RouteStatus;
@@ -12,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 
 @Component
-public class FakeRouteSnapshotPort implements RouteSnapshotPort {
+public class FakeRouteSnapshotPort implements RouteSnapshotPort, DriverRouteLookupPort {
   public static final UUID CANONICAL_ROUTE_ID =
       UUID.fromString("33333333-3333-4333-8333-333333333333");
   public static final UUID CANONICAL_STORE_ID =
@@ -60,12 +61,14 @@ public class FakeRouteSnapshotPort implements RouteSnapshotPort {
     return snapshot;
   }
 
-  public List<RouteSnapshot> findByDriverId(UUID driverId) {
+  @Override
+  public List<UUID> findRouteIdsByDriver(UUID driverId) {
     if (driverId == null) {
       return List.of();
     }
     return routesById.values().stream()
         .filter(r -> Objects.equals(r.driverId(), driverId))
+        .map(RouteSnapshot::routeId)
         .toList();
   }
 }

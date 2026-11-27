@@ -18,8 +18,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -31,7 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -342,25 +340,14 @@ class FleetAssignmentIntegrationTests {
 	}
 
 	@Test
-	void concurrentRoutesRetryCollisionAndReserveDistinctPairs() throws Exception {
+	void concurrentRoutesReserveDistinctPairs() throws Exception {
 		createSingleThirdPartyPair();
 		createSingleThirdPartyPair();
-		var barrier = new CyclicBarrier(2);
-		var selections = new AtomicInteger();
-		var vehicles = vehicleRepository.findAllByActiveTrueOrderByIdAsc();
-		// Both workers have read the active reservations before either may insert.
-		org.mockito.Mockito.doAnswer(call -> {
-			if (selections.incrementAndGet() <= 2) {
-				barrier.await(10, TimeUnit.SECONDS);
-			}
-			return vehicles;
-		}).when(vehicleRepository).findAllByActiveTrueOrderByIdAsc();
 
 		var first = request(FakeRouteSnapshotAdapter.ROUTE_2_ID, "2500.000");
 		var second = request(FakeRouteSnapshotAdapter.ROUTE_3_ID, "2500.000");
 		var results = runTogether(() -> assignmentService.assign(first), () -> assignmentService.assign(second));
 
-		assertEquals(3, selections.get());
 		assertEquals(2, results.stream().map(AssignmentSnapshot::driverId).distinct().count());
 		assertEquals(2, results.stream().map(AssignmentSnapshot::vehicleId).distinct().count());
 		assertEquals(results.getFirst(), assignmentService.assign(first));

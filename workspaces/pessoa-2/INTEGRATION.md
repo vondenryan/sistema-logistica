@@ -1,6 +1,38 @@
-# Integração isolada — Pessoa 2
+# Integração — Pessoa 2
 
-Este workspace pode demonstrar parceiros e frota sem iniciar os serviços dos outros workspaces. Os dados e IDs abaixo são fictícios e locais.
+## Sprint 4
+
+O perfil Maven `integration` monta um backend Spring Boot 3.5.7 com os módulos existentes de identidade, pedidos, rotas, parceiros, frota e entregas. A composição usa as portas Java v1. O contexto JWT vem da identidade da Pessoa 1, os snapshots vêm das rotas/pedidos reais e a frota grava no mesmo PostgreSQL. A atribuição entra por `POST /api/v1/routes/{routeId}/assign`; a consulta administrativa usa `GET /api/v1/fleet/assignments/{routeId}`.
+
+A capacidade é conferida contra os pedidos confirmados da rota. Uma trava transacional no banco serializa as reservas e as liberações. Os índices únicos de motorista e veículo ativos continuam protegendo a integridade. A porta de liberação recebe o motivo e o evento v1 e consulta o estado real da rota. A emissão do evento de conclusão ainda depende do núcleo de rotas.
+
+### Executar com PostgreSQL
+
+A partir de `workspaces/pessoa-2`, crie um banco PostgreSQL de integração e exporte `DB_URL` (JDBC), `DB_USER`, `DB_PASSWORD` e `JWT_SECRET` (mínimo de 32 bytes). Para cotar frete, configure também `OSRM_BASE_URL` e `FREIGHT_TARIFF_PER_KM`. As notificações usam SMTP em `MAIL_HOST` e `MAIL_PORT` (padrão `localhost:1025`).
+
+```bash
+bash backend/mvnw -f backend/pom.xml -Pintegration clean package -DskipTests
+java -jar backend/target/pessoa2-backend-0.0.1-SNAPSHOT-integration.jar
+```
+
+O Flyway executa P1 em `public`, P2 em `pessoa2` e P3 em `deliveries`, com um histórico por conjunto e versões originais preservadas. As tabelas de negócio do núcleo e das entregas ficam nos schemas definidos pelos módulos. Para partir de dados P1/P3 existentes, use uma cópia do banco com os históricos correspondentes. Dados do workspace P2 isolado ficam no seu banco de origem e exigem importação explícita para o schema `pessoa2`.
+
+### Frontend e smoke test
+
+Para a demonstração, inicie o JAR com `SPRING_PROFILES_ACTIVE=integration-demo`. Isso cria a origem, a loja e a frota fictícias de forma idempotente. Em um banco de demonstração, escolha uma senha descartável em `P2_SMOKE_PASSWORD` e execute:
+
+```bash
+psql -v ON_ERROR_STOP=1 -f scripts/seed-integration-actors.sql
+python3 scripts/smoke-integration.py
+```
+
+Configure o cliente `psql` para o mesmo banco do backend. O seed adiciona um operador e uma conta de outra loja. O teste cria pedidos e rotas com reservas persistentes, então use um banco descartável novo a cada execução. `P2_SMOKE_URL` aponta para o backend se ele usar uma porta diferente de 8080.
+
+Abra o painel da Pessoa 2 com `npm ci && npm run dev -- --mode integration`, dentro de `frontend`. Faça login com o operador de demonstração (`sprint4-operator@example.invalid`) para consultar e atribuir uma rota pelo UUID. `P2_API_PROXY` ajusta o endpoint de desenvolvimento. Em produção o painel pode ser servido sob um caminho do mesmo domínio com `P2_FRONTEND_BASE`, mantendo `/api/v1` no backend integrado.
+
+## Demonstração isolada das Sprints 1–3
+
+Este workspace também pode demonstrar parceiros e frota sem iniciar os serviços dos outros workspaces. Os dados e IDs abaixo são fictícios e locais.
 
 ## Fronteiras dos contratos
 
@@ -69,14 +101,10 @@ npm test
 npm run build
 ```
 
-| Execução | Resultado |
-|---|---|
-| Local — suíte completa backend + PostgreSQL | `.\mvnw.cmd --batch-mode -DfailIfNoTests=true test` com PostgreSQL 16 (`docker compose up -d --wait`) — **91 testes passaram** (0 falhas, 0 erros, 0 ignorados), incluindo `FleetContractJsonTests`, `FakeRouteSnapshotAdapterTests`, `PartnerLookupAdapterTests`, `PartnerLookupPortContractTests`, `OriginControllerContractTests`, `FleetControllerContractTests`, `FleetAssignmentIntegrationTests` e testes de persistência/autorização. |
-| Local — frontend | `npm ci && npm test && npm run build` — **16 arquivos / 51 testes passaram**; build `vue-tsc -b && vite build` aprovado. |
-| CI — workflow `backend-ci.yml` | Será validado pelo GitHub Actions ao abrir o PR `feat/p2-sprint-3` → `develop`. |
+Os testes de contrato usam fixtures JSON v1 e cobrem consulta de parceiro, serialização de atribuição, pré-condições de rota, capacidade, idempotência, conflito e concorrência.
 
-Os testes de contrato usam fixtures JSON v1, exercitam a serialização do `PartnerLookupPort`, `RouteSnapshotPort` e `FleetAssignmentPort`, e cobrem a tabela estática do fake de rotas. A suíte de integração cobre atribuição, capacidade, idempotência, conflito, liberação e concorrência com PostgreSQL 16 local, sem depender de serviços da Pessoa 1 ou Pessoa 3.
+### Validação local da Sprint 3
 
-## Integração futura
+Na entrega isolada da Sprint 3, a execução de `.\mvnw.cmd --batch-mode -DfailIfNoTests=true test` com PostgreSQL 16 registrou 91 testes aprovados, sem falhas, erros ou testes ignorados. A execução de `npm ci && npm test && npm run build` registrou 51 testes aprovados em 16 arquivos e concluiu o build do frontend.
 
-Na Sprint 4, substituir o fake local de `RouteSnapshotPort` pelo adaptador da Pessoa 1 e ligar `CurrentActorPort` à identidade central, sem importar entidades ou repositórios de outros módulos. Esta demonstração não realiza essas integrações e não altera `docs/CONTRACTS_V1.md`.
+A suíte isolada cobre os snapshots e a serialização das portas `PartnerLookupPort`, `RouteSnapshotPort` e `FleetAssignmentPort`, além das rotas fixas do fake. Os testes com PostgreSQL exercitam atribuição, capacidade, idempotência, conflito, liberação e concorrência sem iniciar os serviços da Pessoa 1 ou da Pessoa 3. As verificações do PR são executadas pelo workflow `backend-ci.yml` no GitHub Actions.

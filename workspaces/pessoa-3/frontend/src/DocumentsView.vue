@@ -41,6 +41,21 @@ async function generate() {
     loading.value = false
   }
 }
+async function download() {
+  if (!receipt.value) return
+  const id = receipt.value.documentId
+  try {
+    const pdf = await deliveriesApi.documentPdf(id)
+    const url = URL.createObjectURL(pdf)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `documento-${id}.pdf`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Não foi possível baixar o PDF.'
+  }
+}
 </script>
 
 <template>
@@ -90,15 +105,9 @@ async function generate() {
       <div><strong>Tipo:</strong> {{ receipt.documentType }}</div>
       <div><strong>Status:</strong> {{ receipt.status }}</div>
       <div class="actions-row">
-        <a
-          :href="deliveriesApi.documentPdfUrl(receipt.documentId)"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-success"
-          style="text-decoration: none"
-        >
-          Visualizar / Baixar PDF
-        </a>
+        <button type="button" class="btn btn-success" @click="download">
+          Baixar PDF
+        </button>
       </div>
     </div>
   </section>
