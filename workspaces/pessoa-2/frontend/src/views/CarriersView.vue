@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, type Carrier } from '../api'
-import { isDevMode, devActor } from '../devActor'
+import { currentRole } from '../devActor'
 import { canManagePartners } from '../partners/partnerPolicy'
 import { formatFleetError } from '../fleet/fleetError'
 import { validateCarrierName } from '../fleet/fleetValidation'
@@ -19,7 +19,7 @@ const formError = ref('')
 const formName = ref('')
 const editingCarrier = ref<Carrier | null>(null)
 
-const role = computed(() => (isDevMode ? devActor.role : null))
+const role = computed(() => (currentRole.value))
 const canManage = computed(() => canManagePartners(role.value))
 const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 

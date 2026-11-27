@@ -18,7 +18,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "br.com.sistemalogistica.pessoa2")
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ContractProblemHandler {
 

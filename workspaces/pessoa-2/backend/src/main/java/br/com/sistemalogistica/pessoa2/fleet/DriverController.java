@@ -2,7 +2,7 @@ package br.com.sistemalogistica.pessoa2.fleet;
 
 import java.util.UUID;
 
-import tools.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;

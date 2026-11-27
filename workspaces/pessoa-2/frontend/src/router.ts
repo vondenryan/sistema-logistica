@@ -6,7 +6,7 @@ import OriginsView from './views/OriginsView.vue'
 import StoresView from './views/StoresView.vue'
 import SuppliersView from './views/SuppliersView.vue'
 import VehiclesView from './views/VehiclesView.vue'
-import { devActor, isDevMode } from './devActor'
+import { currentRole } from './devActor'
 import { canManagePartners } from './partners/partnerPolicy'
 
 declare module 'vue-router' {
@@ -16,7 +16,7 @@ declare module 'vue-router' {
 }
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', redirect: '/stores' },
     { path: '/stores', name: 'stores', component: StoresView },
@@ -52,7 +52,7 @@ export const router = createRouter({
 router.beforeEach((to) => {
   if (
     to.meta.requiresFleetAccess &&
-    !canManagePartners(isDevMode ? devActor.role : null)
+    !canManagePartners(currentRole.value)
   ) {
     return { name: 'stores' }
   }

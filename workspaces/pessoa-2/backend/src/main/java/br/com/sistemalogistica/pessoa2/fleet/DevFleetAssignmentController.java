@@ -17,7 +17,7 @@ import br.com.sistemalogistica.pessoa2.shared.contract.ContractException;
 
 @RestController
 @RequestMapping("/api/v1/fleet/assignments")
-@Profile("dev")
+@Profile("dev & !integration")
 public class DevFleetAssignmentController {
 
 	private final FleetAssignmentService service;

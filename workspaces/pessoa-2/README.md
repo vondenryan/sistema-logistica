@@ -1,6 +1,6 @@
 # Workspace Pessoa 2
 
-Workspace isolado do módulo de parceiros. O scaffold inicial usa Java 21, Spring Boot 4.2.0, Vue 3, PostgreSQL 16 e Flyway. O Spring Boot 4.2.0 suporta Java 17–27; a versão pode ser revisitada antes da integração.
+Workspace de parceiros e frota com Java 21, Spring Boot 3.5.7, Vue 3, PostgreSQL 16 e Flyway. A [integração da Sprint 4](INTEGRATION.md#sprint-4) conecta os módulos ao núcleo de pedidos e rotas.
 
 ## Requisitos
 
@@ -41,7 +41,7 @@ O fake `CurrentActorPort` está disponível somente no perfil `dev`. Fora desse 
 
 ## Contratos compartilhados
 
-`PartnerLookupPort` e seus snapshots usam o pacote Java compartilhado `contracts.v1`, compatível com os demais workspaces; as coordenadas do snapshot são `BigDecimal`. As portas de atribuição, liberação e consulta de rotas também usam `contracts.v1`. Não há uma pasta compartilhada `contracts/v1/` na raiz do repositório.
+`PartnerLookupPort` e seus snapshots usam o pacote Java compartilhado `contracts.v1`, compatível com os demais workspaces; as coordenadas do snapshot são `BigDecimal`. Os contratos próprios da Pessoa 2 permanecem em `br.com.sistemalogistica.pessoa2.contracts.v1`. Não há uma pasta compartilhada `contracts/v1/` na raiz do repositório.
 
 ## Cadastro de origens
 
@@ -62,6 +62,10 @@ O POST recebe `{name,contactEmail?,storeId}`. `name` é obrigatório (máximo 16
 Somente `ADMIN` e `OPERATOR` podem listar, criar ou atualizar fornecedores. `STORE` recebe 403 na listagem, criação e atualização e só consulta fornecedores vinculados à própria loja; outro fornecedor fora do escopo retorna 404. `DRIVER` recebe 403.
 
 **Pontos em aberto/decisões locais:** o contrato não define como `active` aparece nas respostas de fornecedor, portanto esta implementação não expõe `active`; a inativação com `{"active":false}` fica interna e não exclui fisicamente nem deixa o fornecedor invisível. O PATCH não consegue apagar `contactEmail`: `contactEmail:null` é rejeitado com 400 e o campo omitido preserva o valor atual. IDs inválidos em GET/PATCH retornam 400 `VALIDATION_ERROR`.
+
+O adaptador de parceiros usa `contracts.v1.PartnerLookupPort` e converte as coordenadas para `BigDecimal` na interface entre módulos. Os workspaces P1 e P2 mantêm cópias idênticas dos tipos da porta e da verificação de contrato para continuar executando de forma independente. O CI compara essas cópias e executa a verificação tanto no fake do P1 quanto no adaptador PostgreSQL do P2.
+
+O CI provisiona PostgreSQL 16 para os testes do P2 com os valores locais padrão do workspace. A API de origens valida latitude entre −90 e 90 e longitude entre −180 e 180 em POST e PATCH. Os erros com detalhes de campo usam `details[].field` e `details[].reason`.
 
 ## Cadastros de frota
 
@@ -100,13 +104,12 @@ O seed de frota é idempotente, insere cada registro somente se seu ID ainda nã
 
 O backend implementa `FleetAssignmentPort` e `FleetReleasePort` internamente. A consulta administrativa é `GET /api/v1/fleet/assignments/{routeId}` (ADMIN/OPERATOR). Para demonstração local, `POST /api/v1/fleet/assignments` aceita `{ "routeId": "<UUID>", "originId": "<UUID>", "requiredCapacityKg": "40.000" }` e existe **somente no perfil `dev`**, também restrita a ADMIN/OPERATOR; ela chama a mesma porta interna. Não há endpoint público de atribuição fora desse perfil.
 
-O fake local de `RouteSnapshotPort` existe apenas em `dev` e `test`, não consulta tabelas de `routing` e fornece cinco rotas PLANNED fixas de IDs `33333333-3333-4333-8333-333333333333` a `33333333-3333-4333-8333-333333333337`, todas para a origem `11111111-1111-4111-8111-111111111111` e a loja `22222222-2222-4222-8222-222222222222`; também fornece fixtures fixas ASSIGNED e COMPLETED para validar pré-condições. As rotas `...3334` e `...3335` ficam reservadas aos testes de concorrência. Um fixture local idempotente disponibiliza a loja e a origem base pelo `PartnerLookupPort`. O snapshot v1 não inclui peso total da rota e `orders` está fora deste escopo: a atribuição valida o peso positivo solicitado e a capacidade do veículo, sem comparar com a soma de pedidos.
+O fake local de `RouteSnapshotPort` existe apenas em `dev` e `test`, não consulta tabelas de `routing` e fornece cinco rotas PLANNED fixas de IDs `33333333-3333-4333-8333-333333333333` a `33333333-3333-4333-8333-333333333337`, todas para a origem `11111111-1111-4111-8111-111111111111` e a loja `22222222-2222-4222-8222-222222222222`; também fornece fixtures fixas ASSIGNED e COMPLETED para validar pré-condições. As rotas `...3334` e `...3335` ficam reservadas aos testes de concorrência. Um fixture local idempotente disponibiliza a loja e a origem base pelo `PartnerLookupPort`. No modo isolado, o snapshot v1 de rota não contém o peso total. No perfil integrado, a frota valida a soma dos pesos dos pedidos confirmados pela porta de pedidos.
 
-A seleção usa somente motoristas e veículos ativos e sem reserva ativa, capacidade suficiente, frota própria primeiro e fallback terceirizado; pares terceirizados precisam pertencer à mesma transportadora. Entre candidatos, motoristas são ordenados pelo número de reservas ativas no próprio fleet (decisão provisória para representar “entregas pendentes”) e depois por UUID; veículos empatados também são ordenados por UUID. Não havendo par elegível, a porta retorna `NO_ELIGIBLE_RESOURCE` (409). A migration V6 mantém uma única linha por rota e protege motorista/veículo contra reservas ativas concorrentes. Em caso de colisão, uma nova transação verifica a idempotência e reavalia os pares disponíveis. Após cinco colisões consecutivas, a porta retorna `CONFLICT`.
+A seleção usa somente motoristas e veículos ativos e sem reserva ativa, capacidade suficiente, frota própria primeiro e fallback terceirizado; pares terceirizados precisam pertencer à mesma transportadora. Entre candidatos, motoristas são ordenados pelo número de reservas ativas no próprio fleet (decisão provisória para representar “entregas pendentes”) e depois por UUID; veículos empatados também são ordenados por UUID. Não havendo par elegível, a porta retorna `NO_ELIGIBLE_RESOURCE` (409). A migration V6 mantém uma única linha por rota e protege motorista/veículo contra reservas ativas concorrentes.
 
 `FleetReleasePort.release` deduplica por `eventId`. `ROUTE_CANCELLED` retorna `PRECONDITION_FAILED` (422), pois a regra de cancelamento ainda não foi aprovada. Liberar uma reserva mantém a linha da atribuição, e `route_id` continua único: a mesma rota não recebe uma nova atribuição após a liberação.
 
+## Demonstração isolada e integração
 
-O adaptador de parceiros usa `contracts.v1.PartnerLookupPort` e converte as coordenadas para `BigDecimal` na interface entre módulos. Os workspaces P1 e P2 mantêm cópias idênticas dos tipos da porta e da verificação de contrato para continuar executando de forma independente. O CI compara essas cópias e executa a verificação tanto no fake do P1 quanto no adaptador PostgreSQL do P2.
-
-O CI provisiona PostgreSQL 16 para os testes do P2 com os valores locais padrão do workspace. A API de origens valida latitude entre −90 e 90 e longitude entre −180 e 180 em POST e PATCH. Os erros com detalhes de campo usam `details[].field` e `details[].reason`.
+Consulte [INTEGRATION.md](INTEGRATION.md) para iniciar o workspace sem outros serviços, executar o roteiro de CRUD e atribuição com seed/fakes, e acompanhar separadamente as evidências de validação local e CI.

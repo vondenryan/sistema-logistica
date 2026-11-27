@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Profile({"dev", "test"})
+@Profile({"dev", "test", "integration-demo & integration"})
 public class RouteFixturePartnerSeed implements ApplicationRunner {
 
 	private static final UUID STORE_ID = UUID.fromString("22222222-2222-4222-8222-222222222222");

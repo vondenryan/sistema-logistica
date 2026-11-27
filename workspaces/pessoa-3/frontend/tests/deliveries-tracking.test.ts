@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import TrackingView from '../src/TrackingView.vue'
 import DriverPanelView from '../src/DriverPanelView.vue'
 import DocumentsView from '../src/DocumentsView.vue'
+import { clearDeliverySession, deliveryAuthenticated, setDeliverySession } from '../src/api'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -213,7 +214,7 @@ describe('DocumentsView', () => {
     vi.restoreAllMocks()
   })
 
-  it('displays academic watermark and generates simulated document PDF link', async () => {
+  it('displays the academic watermark and downloads the PDF with a bearer token', async () => {
     const orderId = '44444444-4444-4444-8444-444444444444'
     const documentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 
@@ -238,8 +239,19 @@ describe('DocumentsView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain(documentId)
-    const link = wrapper.find('a')
-    expect(link.attributes('href')).toBe(`/api/v1/documents/${documentId}/pdf`)
+    fetchMock.mockResolvedValueOnce(jsonResponse({ code: 'UNAUTHENTICATED' }, 401))
+    setDeliverySession({ accessToken: 'test-token', expiresAt: new Date(Date.now() + 60_000).toISOString() })
+    try {
+      await wrapper.get('button.btn-success').trigger('click')
+      await flushPromises()
+      const [path, init] = fetchMock.mock.calls[1]!
+      expect(path).toBe(`/api/v1/documents/${documentId}/pdf`)
+      expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token')
+      expect(wrapper.get('[role="alert"]').text()).not.toBe('')
+      expect(deliveryAuthenticated.value).toBe(false)
+    } finally {
+      clearDeliverySession()
+    }
   })
 
   it('shows precondition error when freight is not quoted (422)', async () => {
