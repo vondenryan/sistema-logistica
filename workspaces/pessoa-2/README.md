@@ -112,4 +112,4 @@ A seleção usa somente motoristas e veículos ativos e sem reserva ativa, capac
 
 ## Demonstração isolada e integração
 
-Consulte [INTEGRATION.md](INTEGRATION.md) para iniciar o workspace sem outros serviços, executar o roteiro de CRUD e atribuição com seed/fakes, e acompanhar separadamente as evidências de validação local e CI.
+O [guia de integração](INTEGRATION.md) descreve como executar as Sprints 1–3 com dados de demonstração e como iniciar o backend integrado da Sprint 4. O guia também registra os comandos e resultados da validação isolada da Sprint 3.

@@ -102,3 +102,9 @@ npm run build
 ```
 
 Os testes de contrato usam fixtures JSON v1 e cobrem consulta de parceiro, serialização de atribuição, pré-condições de rota, capacidade, idempotência, conflito e concorrência.
+
+### Validação local da Sprint 3
+
+Na entrega isolada da Sprint 3, a execução de `.\mvnw.cmd --batch-mode -DfailIfNoTests=true test` com PostgreSQL 16 registrou 91 testes aprovados, sem falhas, erros ou testes ignorados. A execução de `npm ci && npm test && npm run build` registrou 51 testes aprovados em 16 arquivos e concluiu o build do frontend.
+
+A suíte isolada cobre os snapshots e a serialização das portas `PartnerLookupPort`, `RouteSnapshotPort` e `FleetAssignmentPort`, além das rotas fixas do fake. Os testes com PostgreSQL exercitam atribuição, capacidade, idempotência, conflito, liberação e concorrência sem iniciar os serviços da Pessoa 1 ou da Pessoa 3. As verificações do PR são executadas pelo workflow `backend-ci.yml` no GitHub Actions.
