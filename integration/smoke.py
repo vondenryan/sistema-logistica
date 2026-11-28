@@ -115,6 +115,10 @@ def lifecycle():
         assert route["driverId"] == state["driver"] and route["vehicleId"] == state["vehicle"]
         return request(f"/fleet/assignments/{route['routeId']}", token=operator)[1]
 
+    _, rejected = request("/orders", token=operator, body={"originId": "not-a-uuid"},
+                          statuses=(400,), code="VALIDATION_ERROR")
+    assert rejected["details"] == [{"field": "originId", "reason": "INVALID_VALUE"}]
+
     order = create_order(recipient)
     _, freight = request(f"/orders/{order['orderId']}/freight-quote", token=operator, body={})
     route = make_route(order)
